@@ -1,6 +1,6 @@
 [package]
 name = "worknote"
-version = "0.5.1"
+version = "0.6.0"
 description = "WorkNote - 本地优先的每日记录与轻待办桌面应用"
 authors = ["WorkNote"]
 edition = "2024"
@@ -35,6 +35,8 @@ sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio",
 chrono = { version = "0.4", features = ["serde"] }
 # 图片附件走 IPC 时用 base64 传字节（前端 File → base64 → Rust 解码落盘）
 base64 = "0.22"
+# 保密项目密码哈希
+sha2 = "0.10"
 tokio = { version = "1", features = ["sync", "time"] }
 
 [dev-dependencies]

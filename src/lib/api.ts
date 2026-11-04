@@ -6,12 +6,16 @@ import type {
   Entry,
   EntryPatch,
   Notification,
+  PomodoroSession,
+  PomodoroSummary,
   Project,
   ProjectPatch,
   SearchHit,
+  SecretStatus,
   Settings,
   ShortcutKind,
   TodoGroup,
+  UnlockResult,
 } from "./types";
 
 /** 所有后端调用集中在这里：页面不直接 invoke，便于统一错误处理与类型约束。 */
@@ -138,6 +142,34 @@ export const api = {
     invoke<number>("claim_attachments", { entryId, content }),
 
   deleteAttachment: (id: number) => invoke<void>("delete_attachment", { id }),
+
+  // ---- 保密项目（v0.6）----
+  secretStatus: () => invoke<SecretStatus>("secret_status"),
+  setSecretPassword: (password: string, hint: string) =>
+    invoke<SecretStatus>("set_secret_password", { password, hint }),
+  changeSecretPassword: (oldPassword: string, newPassword: string, newHint: string) =>
+    invoke<void>("change_secret_password", { oldPassword, newPassword, newHint }),
+  unlockSecret: (password: string) => invoke<UnlockResult>("unlock_secret", { password }),
+  lockSecret: () => invoke<void>("lock_secret"),
+
+  // ---- 四象限（v0.6）----
+  setEntryQuadrant: (id: number, quadrant: number | null) =>
+    invoke<Entry>("set_entry_quadrant", { id, quadrant }),
+  listQuadrantEntries: () => invoke<Entry[]>("list_quadrant_entries"),
+  listUnassignedEntries: () => invoke<Entry[]>("list_unassigned_entries"),
+
+  // ---- 番茄钟（v0.6）----
+  pomodoroSave: (payload: {
+    kind: string;
+    durationSeconds: number;
+    startedAt: string;
+    endedAt: string;
+    completed: boolean;
+    entryId: number | null;
+  }) => invoke<PomodoroSession>("pomodoro_save", payload),
+  pomodoroSummary: () => invoke<PomodoroSummary>("pomodoro_summary"),
+  pomodoroList: (limit?: number) => invoke<PomodoroSession[]>("pomodoro_list", { limit }),
+  pomodoroClear: () => invoke<number>("pomodoro_clear"),
 };
 
 /** 统一把 invoke 抛出的错误转成可展示文案 */

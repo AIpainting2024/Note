@@ -43,6 +43,13 @@ pub struct Entry {
     /// v0.4：父任务已完成的子任务数；没有子任务时为 None，有子任务时可能为 0。
     #[sqlx(default)]
     pub child_done: Option<i64>,
+    /// v0.6：四象限归属（1=重要且紧急 2=重要不紧急 3=紧急不重要 4=不重要不紧急）；None=未划分
+    #[sqlx(default)]
+    pub quadrant: Option<i64>,
+    /// v0.6：所属项目是否保密（列表 JOIN 带出；无项目时 false）。
+    /// 锁定时前端据此把这些记录从所有列表剔除。
+    #[sqlx(default)]
+    pub project_is_secret: bool,
 }
 
 /// 记录补丁：字段缺省 = 不改；`due_date` / `due_time` / `project_id` 显式 null = 清空。
@@ -87,6 +94,9 @@ pub struct Project {
     pub task_overdue: i64,
     /// 该项目下非待办记录数（is_todo=0）。
     pub note_total: i64,
+    /// v0.6：保密项目（侧边栏归到「保密项目」区，需密码解锁才可见）
+    #[sqlx(default)]
+    pub is_secret: bool,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -96,6 +106,9 @@ pub struct Project {
 #[serde(rename_all = "camelCase", default)]
 pub struct ProjectPatch {
     pub name: Option<String>,
+    /// v0.6：切换保密项目
+    #[serde(default)]
+    pub is_secret: Option<bool>,
     #[serde(default, deserialize_with = "deserialize_explicit_option")]
     pub description: Option<Option<String>>,
     #[serde(default, deserialize_with = "deserialize_explicit_option")]
@@ -252,6 +265,63 @@ pub struct BackupInfo {
     pub path: String,
     pub size_bytes: i64,
     pub created_at: String,
+}
+
+/// 保密锁状态（v0.6）。
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SecretStatus {
+    /// 是否已经设过密码
+    pub configured: bool,
+    /// 本次进程内是否已解锁
+    pub unlocked: bool,
+    /// 连续输错达到 3 次后，解锁结果里会带上提示
+    pub hint: Option<String>,
+}
+
+/// 解锁结果。
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UnlockResult {
+    pub ok: bool,
+    /// 还剩几次机会（未解锁时有效）
+    pub attempts_left: i64,
+    /// 输错满 3 次才返回密码提示
+    pub hint: Option<String>,
+}
+
+/// 番茄钟一次专注/休息记录（v0.6）。
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct PomodoroSession {
+    pub id: i64,
+    pub entry_id: Option<i64>,
+    /// focus | break
+    pub kind: String,
+    pub duration_seconds: i64,
+    /// YYYY-MM-DD
+    pub day: String,
+    pub started_at: String,
+    pub ended_at: String,
+    pub completed: bool,
+    pub created_at: String,
+    /// 关联事项内容（列表 JOIN 带出）
+    #[sqlx(default)]
+    pub entry_content: Option<String>,
+}
+
+/// 番茄钟总览。
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PomodoroSummary {
+    pub today_count: i64,
+    pub today_minutes: i64,
+    pub week_count: i64,
+    pub week_minutes: i64,
+    pub total_count: i64,
+    pub total_minutes: i64,
+    /// 连续专注天数（按有 focus 记录的 day 计算）
+    pub streak_days: i64,
 }
 
 /// 图片附件（v0.5.1）。正文里以 `att:<id>` 引用，文件在数据目录 `attachments/` 下。

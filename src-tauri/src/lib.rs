@@ -116,6 +116,16 @@ pub struct AppState {
     pub paths: Paths,
     /// 当前已注册的两个快捷键字符串，用于重新注册时注销旧值。
     pub shortcuts: StdMutex<Shortcuts>,
+    /// v0.6：保密项目解锁状态（只在内存里，重启应用自动重新上锁）。
+    pub secret: StdMutex<SecretRuntime>,
+}
+
+/// 保密锁的运行时状态。
+#[derive(Debug, Default)]
+pub struct SecretRuntime {
+    pub unlocked: bool,
+    /// 连续输错次数（到 3 次给提示后清零）
+    pub attempts: i64,
 }
 
 impl AppState {
@@ -135,6 +145,7 @@ impl AppState {
             pool: tokio::sync::RwLock::new(pool),
             paths,
             shortcuts: StdMutex::new(Shortcuts { capture, main }),
+            secret: StdMutex::new(SecretRuntime::default()),
         })
     }
 
@@ -458,6 +469,18 @@ pub fn run() {
             commands::system::open_data_dir,
             commands::system::set_global_shortcut,
             commands::system::set_shortcut,
+            commands::secret::secret_status,
+            commands::secret::set_secret_password,
+            commands::secret::change_secret_password,
+            commands::secret::unlock_secret,
+            commands::secret::lock_secret,
+            commands::quadrant::set_entry_quadrant,
+            commands::quadrant::list_quadrant_entries,
+            commands::quadrant::list_unassigned_entries,
+            commands::pomodoro::pomodoro_save,
+            commands::pomodoro::pomodoro_summary,
+            commands::pomodoro::pomodoro_list,
+            commands::pomodoro::pomodoro_clear,
             commands::attachments::save_attachment,
             commands::attachments::attach_file,
             commands::attachments::list_attachments,

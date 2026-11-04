@@ -20,7 +20,7 @@ use crate::{emit_entries_changed, AppState, QUICK_WINDOW_LABEL};
 pub const ENTRY_COLUMNS: &str = "id, day, content, is_todo, due_date, due_time, completed_at, \
                                  is_pinned, is_deleted, created_at, updated_at, \
                                  project_id, parent_id, project_name, project_color, \
-                                 child_total, child_done, sort_order";
+                                 child_total, child_done, sort_order, quadrant, project_is_secret";
 
 /// 记录查询的“数据源”（v0.4）。
 ///
@@ -36,6 +36,7 @@ pub const ENTRY_SOURCE: &str = "\
            e.due_date AS due_date, e.due_time AS due_time, e.completed_at AS completed_at, \
            e.is_pinned AS is_pinned, e.is_deleted AS is_deleted, e.created_at AS created_at, \
            e.updated_at AS updated_at, e.project_id AS project_id, e.parent_id AS parent_id, \
+           e.quadrant AS quadrant, COALESCE(p.is_secret, 0) AS project_is_secret, \
            p.name AS project_name, p.color AS project_color, \
            NULLIF((SELECT COUNT(*) FROM entries c \
                    WHERE c.parent_id = e.id AND c.is_deleted = 0), 0) AS child_total, \

@@ -5,6 +5,9 @@
 pub mod attachments;
 pub mod backup;
 pub mod children;
+pub mod pomodoro;
+pub mod quadrant;
+pub mod secret;
 pub mod entries;
 pub mod notifications;
 pub mod projects;

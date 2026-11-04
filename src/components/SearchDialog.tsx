@@ -5,10 +5,13 @@ import { shortDay, humanDay } from "../lib/dates";
 import { HighlightedSnippet } from "../lib/markdown";
 import { projectHex } from "../lib/projects";
 import type { SearchHit } from "../lib/types";
+import { useSecretFilter } from "../lib/visibility";
 import { useUI } from "../stores/ui";
 import { Modal } from "./ui/Modal";
 
 export function SearchDialog() {
+  // 锁定状态下的保密项目内容不出现在搜索结果里
+  const isHidden = useSecretFilter();
   const open = useUI((s) => s.searchOpen);
   const setOpen = useUI((s) => s.setSearchOpen);
   const setView = useUI((s) => s.setView);
@@ -106,7 +109,7 @@ export function SearchDialog() {
           <p className="px-2 py-6 text-center text-[12.5px] text-ink-faint">没有匹配的记录</p>
         )}
 
-        {hits.map((hit, index) => (
+        {hits.filter((hit) => !isHidden(hit.entry)).map((hit, index) => (
           <button
             key={hit.entry.id}
             type="button"

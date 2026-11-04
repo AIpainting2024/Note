@@ -1,8 +1,9 @@
+import { endOfMonth, format, startOfMonth } from "date-fns";
 import { ChevronLeft, ChevronRight, RotateCcw, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Calendar } from "../components/Calendar";
+import { MonthSquares } from "../components/MonthSquares";
 import { DayView } from "../components/DayView";
-import { EntryList } from "../components/EntryList";
 import { PageHeader } from "../components/PageHeader";
 import { WeekGrid } from "../components/WeekGrid";
 import { Button } from "../components/ui/Button";
@@ -26,9 +27,32 @@ export function CalendarPage() {
   const setMode = useUI((s) => s.setCalendarMode);
   const revision = useUI((s) => s.revision);
 
-  const { entries, loading, error, reload } = useDayEntries(selectedDay);
+  const { entries } = useDayEntries(selectedDay);
   const week = weekDays(selectedDay);
   const { todos: weekTodos } = useTodosRange(week[0], week[6]);
+
+  // 月度方格视图：整月的待办（只含公开任务，保密项目的任务不进入日历）
+  const monthStart = format(startOfMonth(new Date(`${selectedDay}T00:00:00`)), "yyyy-MM-dd");
+  const monthEnd = format(endOfMonth(new Date(`${selectedDay}T00:00:00`)), "yyyy-MM-dd");
+  const { todos: monthTodos, loading: monthLoading } = useTodosRange(monthStart, monthEnd);
+
+  const addTaskOnDay = async (day: string, content: string) => {
+    try {
+      await api.createEntry(content, { isTodo: true, dueDate: day });
+      useUI.getState().bumpRevision();
+    } catch (err) {
+      setTrashError(errorText(err));
+    }
+  };
+
+  const toggleTask = async (entry: Entry, done: boolean) => {
+    try {
+      await api.setEntryCompleted(entry.id, done);
+      useUI.getState().bumpRevision();
+    } catch (err) {
+      setTrashError(errorText(err));
+    }
+  };
 
   const [trashView, setTrashView] = useState(false);
   const [trash, setTrash] = useState<Entry[]>([]);
@@ -180,22 +204,21 @@ export function CalendarPage() {
                 onRestore={(e) => void restore(e)}
                 onPurge={(e) => void purge(e)}
               />
-            ) : entries.length === 0 && !loading ? (
-              <EmptyDay day={selectedDay} />
             ) : (
-              <EntryList entries={entries} loading={loading} error={error} onChange={reload} />
+              <MonthSquares
+                anchor={selectedDay}
+                todos={monthTodos}
+                loading={monthLoading}
+                onOpenDay={(day) => {
+                  setSelectedDay(day);
+                  setMode("day");
+                }}
+                onAdd={addTaskOnDay}
+                onToggle={toggleTask}
+              />
             ))}
         </div>
       </div>
-    </div>
-  );
-}
-
-function EmptyDay({ day }: { day: string }) {
-  return (
-    <div className="flex flex-col items-center justify-center gap-1.5 rounded-xl border border-dashed border-line px-6 py-12 text-center">
-      <p className="text-[13px] text-ink-muted">{shortDay(day)} 没有记录</p>
-      <p className="text-[11.5px] text-ink-faint">用全局快捷键随时记一笔</p>
     </div>
   );
 }

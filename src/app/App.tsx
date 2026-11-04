@@ -8,7 +8,9 @@ import { TodoPanel } from "../components/TodoPanel";
 import { matchShortcut } from "../lib/shortcuts";
 import type { Notification, Theme } from "../lib/types";
 import { CalendarPage } from "../pages/CalendarPage";
+import { PomodoroPage } from "../pages/PomodoroPage";
 import { ProjectPage } from "../pages/ProjectPage";
+import { QuadrantPage } from "../pages/QuadrantPage";
 import { SettingsPage } from "../pages/SettingsPage";
 import { TodayPage } from "../pages/TodayPage";
 import { TodosPage } from "../pages/TodosPage";
@@ -28,6 +30,7 @@ export default function App() {
   const view = useUI((s) => s.view);
   const theme = useUI((s) => s.theme);
   const rightPanel = useUI((s) => s.rightPanel);
+  const rightPanelWidth = useUI((s) => s.rightPanelWidth);
   const selectedEntry = useUI((s) => s.selectedEntry);
   const setSearchOpen = useUI((s) => s.setSearchOpen);
   const loadSettings = useSettingsStore((s) => s.load);
@@ -113,14 +116,44 @@ export default function App() {
         {view === "today" && <TodayPage />}
         {view === "calendar" && <CalendarPage />}
         {view === "todos" && <TodosPage />}
+        {view === "quadrant" && <QuadrantPage />}
+        {view === "pomodoro" && <PomodoroPage />}
         {view === "project" && <ProjectPage />}
         {view === "settings" && <SettingsPage />}
       </main>
 
-      {rightPanel && view !== "settings" && (
-        <aside className="w-[300px] shrink-0 border-l border-line bg-panel-2">
-          {selectedEntry ? <TaskDetail /> : <TodoPanel />}
-        </aside>
+      {rightPanel && view !== "settings" && view !== "quadrant" && view !== "pomodoro" && (
+        <>
+          {/* 拖动改变右侧面板宽度（需求 2） */}
+          <div
+            role="separator"
+            aria-orientation="vertical"
+            title="拖动调整宽度"
+            onMouseDown={(event) => {
+              event.preventDefault();
+              const startX = event.clientX;
+              const startWidth = useUI.getState().rightPanelWidth;
+              const onMove = (move: MouseEvent) => {
+                useUI.getState().setRightPanelWidth(startWidth + (startX - move.clientX));
+              };
+              const onUp = () => {
+                window.removeEventListener("mousemove", onMove);
+                window.removeEventListener("mouseup", onUp);
+                document.body.style.cursor = "";
+              };
+              document.body.style.cursor = "col-resize";
+              window.addEventListener("mousemove", onMove);
+              window.addEventListener("mouseup", onUp);
+            }}
+            className="w-1 shrink-0 cursor-col-resize bg-line/40 transition-colors hover:bg-accent/40"
+          />
+          <aside
+            style={{ width: rightPanelWidth }}
+            className="shrink-0 border-l border-line bg-panel-2"
+          >
+            {selectedEntry ? <TaskDetail /> : <TodoPanel />}
+          </aside>
+        </>
       )}
 
       <SearchDialog />

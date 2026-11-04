@@ -41,6 +41,7 @@ fn project_sql() -> String {
     format!(
         "SELECT p.id AS id, p.name AS name, p.description AS description, \
                 p.color AS color, p.status AS status, p.sort_order AS sort_order, \
+                p.is_secret AS is_secret, \
                 {}, p.created_at AS created_at, p.updated_at AS updated_at \
          FROM projects p",
         stats_columns()
@@ -169,9 +170,21 @@ pub async fn create_project_core(
     color: Option<String>,
     description: Option<String>,
 ) -> Result<Project, String> {
+    create_project_full_core(pool, name, color, description, false).await
+}
+
+/// 新建项目（带保密标记）。
+pub async fn create_project_full_core(
+    pool: &SqlitePool,
+    name: &str,
+    color: Option<String>,
+    description: Option<String>,
+    is_secret: bool,
+) -> Result<Project, String> {
     let name = normalize_project_name(name)?;
     let color = normalize_color(color)?;
     let description = normalize_description(description);
+    let is_secret = is_secret as i64;
     let now = now_timestamp();
     let today = today_string();
 
@@ -181,13 +194,14 @@ pub async fn create_project_core(
         .map_err(|e| format!("数据库事务开启失败：{e}"))?;
     let result = sqlx::query(
         "INSERT INTO projects (name, description, color, status, sort_order, is_deleted, \
-         created_at, updated_at) \
-         VALUES (?1, ?2, ?3, 'active', 0, 0, ?4, ?4)",
+         is_secret, created_at, updated_at) \
+         VALUES (?1, ?2, ?3, 'active', 0, 0, ?5, ?4, ?4)",
     )
     .bind(&name)
     .bind(description.as_deref())
     .bind(color.as_deref())
     .bind(&now)
+    .bind(is_secret)
     .execute(&mut *tx)
     .await
     .map_err(|e| format!("保存项目失败：{e}"))?;
@@ -225,6 +239,9 @@ pub async fn update_project_core(
         .await?
         .ok_or_else(|| "项目不存在或已被删除".to_string())?;
 
+    // 保密标记：不传就沿用原值
+    let is_secret = patch.is_secret.unwrap_or(existing.is_secret) as i64;
+
     let name = match patch.name {
         Some(raw) => normalize_project_name(&raw)?,
         None => existing.name,
@@ -246,7 +263,7 @@ pub async fn update_project_core(
 
     sqlx::query(
         "UPDATE projects SET name = ?1, description = ?2, color = ?3, status = ?4, \
-         sort_order = ?5, updated_at = ?6 WHERE id = ?7",
+         sort_order = ?5, updated_at = ?6, is_secret = ?8 WHERE id = ?7",
     )
     .bind(&name)
     .bind(description.as_deref())
@@ -255,6 +272,7 @@ pub async fn update_project_core(
     .bind(sort_order)
     .bind(&now)
     .bind(id)
+    .bind(is_secret)
     .execute(&mut *tx)
     .await
     .map_err(|e| format!("更新项目失败：{e}"))?;
@@ -379,9 +397,10 @@ pub async fn create_project(
     name: String,
     color: Option<String>,
     description: Option<String>,
+    is_secret: Option<bool>,
 ) -> Result<Project, String> {
     let pool = state.pool.read().await;
-    create_project_core(&pool, &name, color, description).await
+    create_project_full_core(&pool, &name, color, description, is_secret.unwrap_or(false)).await
 }
 
 #[tauri::command]

@@ -28,6 +28,17 @@ export function ProjectPage() {
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [editing, setEditing] = useState(false);
+  const addProjectId = useUI((s) => s.addProjectId);
+  const addInput = useRef<HTMLInputElement>(null);
+
+  // 点侧边栏里的任务时，录入框跟着切到该任务所属项目并聚焦（需求 3）
+  useEffect(() => {
+    if (addProjectId != null && addProjectId === projectId) {
+      const timer = window.setTimeout(() => addInput.current?.focus(), 60);
+      return () => window.clearTimeout(timer);
+    }
+    return undefined;
+  }, [addProjectId, projectId]);
 
   const reload = () => useUI.getState().bumpRevision();
 
@@ -174,8 +185,9 @@ export function ProjectPage() {
           <div className="mb-2 flex items-center gap-1.5 rounded-lg border border-line bg-panel px-2.5 py-1.5">
             <Plus size={13} className="shrink-0 text-ink-faint" />
             <input
+              ref={addInput}
               value={draft}
-              placeholder="添加任务，回车确认"
+              placeholder={project ? `添加到「${project.name}」，回车确认` : "添加任务，回车确认"}
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.nativeEvent.isComposing) void addTask();

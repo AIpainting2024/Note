@@ -29,6 +29,14 @@ type UIState = {
   rightPanel: boolean;
   toggleRightPanel: () => void;
 
+  /** 右侧面板宽度（可拖动，记住上次的位置） */
+  rightPanelWidth: number;
+  setRightPanelWidth: (width: number) => void;
+
+  /** 项目页「添加任务」当前的归属项目（点侧边栏任务时同步切换） */
+  addProjectId: number | null;
+  setAddProjectId: (id: number | null) => void;
+
   /** 数据变更计数器：任何写入后自增，页面据此重新拉取 */
   revision: number;
   bumpRevision: () => void;
@@ -58,6 +66,19 @@ export const useUI = create<UIState>((set) => ({
 
   rightPanel: true,
   toggleRightPanel: () => set((s) => ({ rightPanel: !s.rightPanel })),
+
+  rightPanelWidth: (() => {
+    const saved = Number(localStorage.getItem("worknote.rightPanelWidth"));
+    return Number.isFinite(saved) && saved >= 260 && saved <= 720 ? saved : 300;
+  })(),
+  setRightPanelWidth: (rightPanelWidth) => {
+    const width = Math.min(720, Math.max(260, Math.round(rightPanelWidth)));
+    localStorage.setItem("worknote.rightPanelWidth", String(width));
+    set({ rightPanelWidth: width });
+  },
+
+  addProjectId: null,
+  setAddProjectId: (addProjectId) => set({ addProjectId }),
 
   revision: 0,
   bumpRevision: () => set((s) => ({ revision: s.revision + 1 })),

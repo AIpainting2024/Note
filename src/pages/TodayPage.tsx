@@ -3,10 +3,12 @@ import { PageHeader } from "../components/PageHeader";
 import { QuickInput } from "../components/QuickInput";
 import { useCounts, useDayEntries } from "../hooks/useEntries";
 import { humanDay, todayStr } from "../lib/dates";
+import { useVisibleEntries } from "../lib/visibility";
 
 export function TodayPage() {
   const day = todayStr();
   const { entries, loading, error, reload } = useDayEntries(day);
+  const visible = useVisibleEntries();
   const counts = useCounts();
 
   const subtitle = counts
@@ -25,7 +27,7 @@ export function TodayPage() {
 
       <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-8">
         <EntryList
-          entries={entries}
+          entries={visible(entries)}
           loading={loading}
           error={error}
           emptyText="今天还没有记录"

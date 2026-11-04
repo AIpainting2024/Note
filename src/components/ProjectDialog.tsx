@@ -1,3 +1,4 @@
+import { Check, Lock } from "lucide-react";
 import { useEffect, useState } from "react";
 import { errorText } from "../lib/api";
 import { cn } from "../lib/cn";
@@ -26,6 +27,7 @@ export function ProjectDialog({ open, onOpenChange, project }: Props) {
   const [color, setColor] = useState<string>(PROJECT_COLORS[0].key);
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState<ProjectStatus>("active");
+  const [isSecret, setIsSecret] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -35,6 +37,7 @@ export function ProjectDialog({ open, onOpenChange, project }: Props) {
     setColor(project?.color ?? PROJECT_COLORS[0].key);
     setDescription(project?.description ?? "");
     setStatus((project?.status as ProjectStatus) ?? "active");
+    setIsSecret(Boolean(project?.isSecret));
     setError(null);
   }, [open, project]);
 
@@ -53,10 +56,15 @@ export function ProjectDialog({ open, onOpenChange, project }: Props) {
           color: color as ProjectColor,
           description: description.trim() || null,
           status,
+          isSecret,
         });
         onOpenChange(false);
       } else {
-        const created = await create(trimmed, { color, description: description.trim() || null });
+        const created = await create(trimmed, {
+          color,
+          description: description.trim() || null,
+          isSecret,
+        });
         if (created) {
           onOpenChange(false);
           setSelectedProject(created.id);
@@ -141,6 +149,28 @@ export function ProjectDialog({ open, onOpenChange, project }: Props) {
             </div>
           </>
         )}
+
+        <button
+          type="button"
+          onClick={() => setIsSecret((v) => !v)}
+          className="mt-3 flex w-full items-center gap-2 rounded-md border border-line px-2.5 py-2 text-left hover:bg-panel"
+        >
+          <span
+            className={cn(
+              "flex h-4 w-4 items-center justify-center rounded border",
+              isSecret ? "border-accent bg-accent text-white" : "border-line text-transparent",
+            )}
+          >
+            <Check size={11} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[12.5px] text-ink">保密项目</span>
+            <span className="block text-[11px] text-ink-faint">
+              归到侧边栏「保密项目」区，需密码解锁；其任务不进入日历与四象限
+            </span>
+          </span>
+          <Lock size={13} className={cn(isSecret ? "text-accent" : "text-ink-faint")} />
+        </button>
 
         {error && <p className="mt-2 text-[12px] text-danger">{error}</p>}
 

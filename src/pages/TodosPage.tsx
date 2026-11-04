@@ -7,6 +7,7 @@ import { cn } from "../lib/cn";
 import { dueLabel, shortDay } from "../lib/dates";
 import { projectHex } from "../lib/projects";
 import type { Entry, TodoGroup } from "../lib/types";
+import { useVisibleEntries } from "../lib/visibility";
 import { useUI } from "../stores/ui";
 
 const TABS: { key: TodoGroup; label: string; icon: typeof ListChecks }[] = [
@@ -21,6 +22,7 @@ export function TodosPage() {
   const setView = useUI((s) => s.setView);
   const setSelectedDay = useUI((s) => s.setSelectedDay);
 
+  const visible = useVisibleEntries();
   const [group, setGroup] = useState<TodoGroup>("pending");
   const [items, setItems] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -90,13 +92,13 @@ export function TodosPage() {
       <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-8">
         {error && <p className="mb-2 text-[12.5px] text-danger">{error}</p>}
 
-        {!loading && items.length === 0 ? (
+        {!loading && visible(items).length === 0 ? (
           <p className="rounded-xl border border-dashed border-line px-6 py-12 text-center text-[13px] text-ink-faint">
             {group === "done" ? "还没有完成的待办" : "这一栏是空的"}
           </p>
         ) : (
           <div className="flex flex-col gap-1">
-            {items.map((entry) => {
+            {visible(items).map((entry) => {
               const done = Boolean(entry.completedAt);
               const due = entry.dueDate ? dueLabel(entry.dueDate, entry.dueTime) : null;
               return (

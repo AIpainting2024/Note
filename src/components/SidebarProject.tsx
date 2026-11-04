@@ -130,7 +130,12 @@ export function SidebarProject({ project, active, expanded, onToggle, onOpenProj
                 </div>
                 <button
                   type="button"
-                  onClick={() => setSelectedEntry(task)}
+                  onClick={() => {
+                    setSelectedEntry(task);
+                    // 项目页的「添加任务」跟着切到这个任务所属项目（需求：录入框同步）
+                    useUI.getState().setAddProjectId(task.projectId ?? project.id);
+                    useUI.getState().setSelectedProject(task.projectId ?? project.id);
+                  }}
                   className="min-w-0 flex-1 text-left"
                   title={task.content}
                 >

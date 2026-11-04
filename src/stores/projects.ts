@@ -11,7 +11,10 @@ type State = {
   load: () => Promise<void>;
   byId: (id: number | null | undefined) => Project | undefined;
   findByName: (name: string) => Project | undefined;
-  create: (name: string, opts?: { color?: string | null; description?: string | null }) => Promise<Project | null>;
+  create: (
+    name: string,
+    opts?: { color?: string | null; description?: string | null; isSecret?: boolean },
+  ) => Promise<Project | null>;
   update: (id: number, patch: ProjectPatch) => Promise<void>;
   remove: (id: number) => Promise<void>;
 };

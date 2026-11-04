@@ -3,20 +3,26 @@ import {
   ChevronsDownUp,
   ChevronsUpDown,
   FolderKanban,
+  Grid2x2,
   ListChecks,
+  Lock,
+  LockOpen,
   Plus,
   Search,
   Settings,
   Sun,
+  Timer,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { ProjectDialog } from "../components/ProjectDialog";
 import { NotificationBell } from "../components/NotificationBell";
+import { ProjectDialog } from "../components/ProjectDialog";
+import { SecretDialog } from "../components/SecretDialog";
 import { SidebarProject } from "../components/SidebarProject";
 import { cn } from "../lib/cn";
 import { displayShortcut } from "../lib/shortcuts";
 import type { View } from "../lib/types";
 import { useProjects } from "../stores/projects";
+import { useSecret } from "../stores/secret";
 import { useSettingsStore } from "../stores/settings";
 import { useUI } from "../stores/ui";
 
@@ -24,6 +30,8 @@ const NAV: { view: View; label: string; icon: typeof Sun }[] = [
   { view: "today", label: "今日", icon: Sun },
   { view: "calendar", label: "日历", icon: CalendarDays },
   { view: "todos", label: "待办", icon: ListChecks },
+  { view: "quadrant", label: "四象限", icon: Grid2x2 },
+  { view: "pomodoro", label: "番茄钟", icon: Timer },
 ];
 
 const EXPANDED_KEY = "worknote.sidebar.expandedProjects";
@@ -45,9 +53,20 @@ export function Sidebar() {
   const setSelectedProject = useUI((s) => s.setSelectedProject);
   const settings = useSettingsStore((s) => s.settings);
   const projects = useProjects((s) => s.items);
+  const secretStatus = useSecret((s) => s.status);
+  const loadSecret = useSecret((s) => s.load);
+  const lockSecret = useSecret((s) => s.lock);
 
   const [creating, setCreating] = useState(false);
+  const [secretOpen, setSecretOpen] = useState(false);
   const [expanded, setExpanded] = useState<Record<number, boolean>>(loadExpanded);
+
+  const searchHint = settings ? displayShortcut(settings.searchShortcut) : "Ctrl + K";
+  const captureHint = settings ? displayShortcut(settings.globalShortcut) : "Ctrl + Shift + N";
+
+  useEffect(() => {
+    void loadSecret();
+  }, [loadSecret]);
 
   // 展开状态记在本机，重启应用后保持
   useEffect(() => {
@@ -58,12 +77,16 @@ export function Sidebar() {
     }
   }, [expanded]);
 
-  const searchHint = settings ? displayShortcut(settings.searchShortcut) : "Ctrl + K";
-  const captureHint = settings ? displayShortcut(settings.globalShortcut) : "Ctrl + Shift + N";
-  const visible = projects.filter((p) => p.status !== "archived");
-  const allExpanded = visible.length > 0 && visible.every((p) => expanded[p.id]);
+  const active = projects.filter((p) => p.status !== "archived");
+  const publicProjects = active.filter((p) => !p.isSecret);
+  const secretProjects = active.filter((p) => p.isSecret);
+  const secretVisible = secretStatus.configured && secretStatus.unlocked;
 
-  // 进入某个项目页时，自动展开它在侧边栏里的任务，回来就能看到
+  const visibleForToggle = secretVisible ? active : publicProjects;
+  const allExpanded =
+    visibleForToggle.length > 0 && visibleForToggle.every((p) => expanded[p.id]);
+
+  // 进入某个项目页时，自动展开它在侧边栏里的任务
   useEffect(() => {
     if (view === "project" && selectedProjectId != null) {
       setExpanded((prev) => (prev[selectedProjectId] ? prev : { ...prev, [selectedProjectId]: true }));
@@ -72,14 +95,19 @@ export function Sidebar() {
 
   const openProject = (id: number) => {
     setSelectedProject(id);
+    setAddProject(id);
     setView("project");
   };
+
+  function setAddProject(id: number | null) {
+    useUI.getState().setAddProjectId(id);
+  }
 
   const toggleAll = () => {
     if (allExpanded) {
       setExpanded({});
     } else {
-      setExpanded(Object.fromEntries(visible.map((p) => [p.id, true])));
+      setExpanded(Object.fromEntries(visibleForToggle.map((p) => [p.id, true])));
     }
   };
 
@@ -130,7 +158,7 @@ export function Sidebar() {
         <span className="flex flex-1 items-center gap-1 text-[11px] font-medium tracking-wide text-ink-faint">
           <FolderKanban size={11} /> 项目
         </span>
-        {visible.length > 0 && (
+        {visibleForToggle.length > 0 && (
           <button
             type="button"
             aria-label={allExpanded ? "全部收起" : "全部展开"}
@@ -153,10 +181,56 @@ export function Sidebar() {
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-2.5 pb-2">
-        {visible.length === 0 ? (
+        {publicProjects.length === 0 ? (
           <p className="px-2 py-1 text-[11px] leading-relaxed text-ink-faint">还没有项目</p>
         ) : (
-          visible.map((project) => (
+          publicProjects.map((project) => (
+            <SidebarProject
+              key={project.id}
+              project={project}
+              active={view === "project" && selectedProjectId === project.id}
+              expanded={Boolean(expanded[project.id])}
+              onToggle={() =>
+                setExpanded((prev) => ({ ...prev, [project.id]: !prev[project.id] }))
+              }
+              onOpenProject={() => openProject(project.id)}
+            />
+          ))
+        )}
+
+        {/* 保密项目区 */}
+        <div className="mt-3 flex items-center gap-1 pl-0.5 pr-1 pb-1">
+          <span className="flex flex-1 items-center gap-1 text-[11px] font-medium tracking-wide text-ink-faint">
+            {secretVisible ? <LockOpen size={11} /> : <Lock size={11} />} 保密项目
+          </span>
+          {secretVisible && (
+            <button
+              type="button"
+              title="重新上锁"
+              aria-label="重新上锁"
+              onClick={() => void lockSecret()}
+              className="rounded p-0.5 text-ink-faint hover:bg-panel hover:text-ink"
+            >
+              <Lock size={12} />
+            </button>
+          )}
+        </div>
+
+        {!secretVisible ? (
+          <button
+            type="button"
+            onClick={() => setSecretOpen(true)}
+            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12px] text-ink-faint hover:bg-panel hover:text-ink"
+          >
+            <Lock size={12} />
+            {secretStatus.configured ? "已锁定 · 点此输入密码" : "设置密码并启用"}
+          </button>
+        ) : secretProjects.length === 0 ? (
+          <p className="px-2 py-1 text-[11px] text-ink-faint">
+            还没有保密项目（新建项目时勾选「保密」）
+          </p>
+        ) : (
+          secretProjects.map((project) => (
             <SidebarProject
               key={project.id}
               project={project}
@@ -195,6 +269,7 @@ export function Sidebar() {
       </div>
 
       <ProjectDialog open={creating} onOpenChange={setCreating} />
+      <SecretDialog open={secretOpen} onOpenChange={setSecretOpen} />
     </nav>
   );
 }

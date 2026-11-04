@@ -19,6 +19,10 @@ export type Entry = {
   /** v0.4：父任务的子任务进度 */
   childTotal: number | null;
   childDone: number | null;
+  /** v0.6：四象限归属（null = 未划分） */
+  quadrant: number | null;
+  /** v0.6：所属项目是否保密（锁定时前端据此隐藏） */
+  projectIsSecret: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -64,6 +68,8 @@ export type Project = {
   taskDone: number;
   taskOverdue: number;
   noteTotal: number;
+  /** v0.6：保密项目（归到侧边栏「保密项目」区） */
+  isSecret: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -74,6 +80,7 @@ export type ProjectPatch = {
   color?: ProjectColor | null;
   status?: ProjectStatus;
   sortOrder?: number;
+  isSecret?: boolean;
 };
 
 export type Settings = {
@@ -116,7 +123,54 @@ export type ShortcutKind = "capture" | "main";
 
 export type TodoGroup = "pending" | "dueToday" | "overdue" | "done";
 
-export type View = "today" | "calendar" | "todos" | "project" | "settings";
+export type View =
+  | "today"
+  | "calendar"
+  | "todos"
+  | "project"
+  | "quadrant"
+  | "pomodoro"
+  | "settings";
+
+/** 四象限等级：1=重要且紧急 2=重要不紧急 3=紧急不重要 4=不重要不紧急 */
+export type Quadrant = 1 | 2 | 3 | 4;
+
+/** 保密锁状态 */
+export type SecretStatus = {
+  configured: boolean;
+  unlocked: boolean;
+  hint: string | null;
+};
+
+export type UnlockResult = {
+  ok: boolean;
+  attemptsLeft: number;
+  hint: string | null;
+};
+
+/** 番茄钟记录 */
+export type PomodoroSession = {
+  id: number;
+  entryId: number | null;
+  kind: "focus" | "break" | string;
+  durationSeconds: number;
+  day: string;
+  startedAt: string;
+  endedAt: string;
+  completed: boolean;
+  createdAt: string;
+  entryContent: string | null;
+};
+
+export type PomodoroSummary = {
+  todayCount: number;
+  todayMinutes: number;
+  weekCount: number;
+  weekMinutes: number;
+  totalCount: number;
+  totalMinutes: number;
+  streakDays: number;
+};
 
 export type Theme = "light" | "dark" | "system";
 

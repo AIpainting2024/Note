@@ -547,6 +547,7 @@ mod tests {
             pool: tokio::sync::RwLock::new(pool),
             paths,
             shortcuts: std::sync::Mutex::new(crate::Shortcuts::default()),
+            secret: std::sync::Mutex::new(crate::SecretRuntime::default()),
         };
         (state, root)
     }

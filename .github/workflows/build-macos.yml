@@ -13,16 +13,16 @@ on:
 jobs:
   build:
     name: macOS ${{ matrix.label }}
-    runs-on: ${{ matrix.runner }}
+    # 两种架构都跑在 macos-14（Apple Silicon）上：
+    # x64 用 Apple 通用 SDK 交叉编译即可，不必排 macos-13（Intel runner 经常排很久）。
+    runs-on: macos-14
     strategy:
       fail-fast: false
       matrix:
         include:
-          - runner: macos-14 # Apple Silicon
-            target: aarch64-apple-darwin
+          - target: aarch64-apple-darwin
             label: arm64
-          - runner: macos-13 # Intel
-            target: x86_64-apple-darwin
+          - target: x86_64-apple-darwin
             label: x64
 
     steps:

@@ -1,0 +1,130 @@
+import { invoke } from "@tauri-apps/api/core";
+import type {
+  BackupInfo,
+  Counts,
+  Entry,
+  EntryPatch,
+  Notification,
+  Project,
+  ProjectPatch,
+  SearchHit,
+  Settings,
+  ShortcutKind,
+  TodoGroup,
+} from "./types";
+
+/** 所有后端调用集中在这里：页面不直接 invoke，便于统一错误处理与类型约束。 */
+export const api = {
+  // ---- 记录 / 任务 ----
+  listEntries: (day: string) => invoke<Entry[]>("list_entries", { day }),
+
+  createEntry: (
+    content: string,
+    opts?: { isTodo?: boolean; dueDate?: string | null; projectId?: number | null },
+  ) =>
+    invoke<Entry>("create_entry", {
+      content,
+      isTodo: opts?.isTodo ?? false,
+      dueDate: opts?.dueDate ?? null,
+      projectId: opts?.projectId ?? null,
+    }),
+
+  updateEntry: (id: number, patch: EntryPatch) => invoke<Entry>("update_entry", { id, patch }),
+
+  setEntryCompleted: (id: number, completed: boolean) =>
+    invoke<Entry>("set_entry_completed", { id, completed }),
+
+  deleteEntry: (id: number) => invoke<void>("delete_entry", { id }),
+
+  restoreEntry: (id: number) => invoke<Entry>("restore_entry", { id }),
+
+  purgeEntry: (id: number) => invoke<void>("purge_entry", { id }),
+
+  listTrash: () => invoke<Entry[]>("list_trash"),
+
+  listTodos: (group: TodoGroup) => invoke<Entry[]>("list_todos", { group }),
+
+  listTodosRange: (start: string, end: string) =>
+    invoke<Entry[]>("list_todos_range", { start, end }),
+
+  searchEntries: (query: string, limit?: number) =>
+    invoke<SearchHit[]>("search_entries", { query, limit: limit ?? 50 }),
+
+  getCounts: () => invoke<Counts>("get_counts"),
+
+  listMarkedDays: (start: string, end: string) =>
+    invoke<string[]>("list_marked_days", { start, end }),
+
+  // ---- 项目（v0.4）----
+  listProjects: (includeArchived = true) =>
+    invoke<Project[]>("list_projects", { includeArchived }),
+
+  createProject: (name: string, opts?: { color?: string | null; description?: string | null }) =>
+    invoke<Project>("create_project", {
+      name,
+      color: opts?.color ?? null,
+      description: opts?.description ?? null,
+    }),
+
+  updateProject: (id: number, patch: ProjectPatch) =>
+    invoke<Project>("update_project", { id, patch }),
+
+  deleteProject: (id: number) => invoke<void>("delete_project", { id }),
+
+  restoreProject: (id: number) => invoke<Project>("restore_project", { id }),
+
+  listProjectEntries: (projectId: number, onlyTasks: boolean) =>
+    invoke<Entry[]>("list_project_entries", { projectId, onlyTasks }),
+
+  // ---- 子任务（v0.4）----
+  listChildren: (parentId: number) => invoke<Entry[]>("list_children", { parentId }),
+
+  createChild: (parentId: number, content: string) =>
+    invoke<Entry>("create_child", { parentId, content }),
+
+  reorderChildren: (parentId: number, orderedIds: number[]) =>
+    invoke<void>("reorder_children", { parentId, orderedIds }),
+
+  // ---- 设置 ----
+  getSettings: () => invoke<Settings>("get_settings"),
+
+  saveSettings: (settings: Settings) => invoke<Settings>("save_settings", { settings }),
+
+  setShortcut: (kind: ShortcutKind, accelerator: string) =>
+    invoke<Settings>("set_shortcut", { kind, accelerator }),
+
+  // ---- 软件内通知 ----
+  notificationsList: (limit?: number) =>
+    invoke<Notification[]>("notifications_list", { limit: limit ?? 50 }),
+
+  notificationsUnread: () => invoke<number>("notifications_unread"),
+
+  notificationMarkRead: (id: number) => invoke<void>("notification_mark_read", { id }),
+
+  notificationDismiss: (id: number) => invoke<void>("notification_dismiss", { id }),
+
+  notificationSnooze: (id: number, minutes: number) =>
+    invoke<void>("notification_snooze", { id, minutes }),
+
+  muteRemindersToday: () => invoke<Settings>("mute_reminders_today"),
+
+  // ---- 数据管理 ----
+  backupNow: () => invoke<BackupInfo>("backup_now"),
+
+  listBackups: () => invoke<BackupInfo[]>("list_backups"),
+
+  restoreBackup: (path: string) => invoke<void>("restore_backup", { path }),
+
+  exportJson: (path: string) => invoke<void>("export_json", { path }),
+
+  exportCsv: (path: string) => invoke<void>("export_csv", { path }),
+
+  openDataDir: () => invoke<void>("open_data_dir"),
+};
+
+/** 统一把 invoke 抛出的错误转成可展示文案 */
+export function errorText(err: unknown): string {
+  if (typeof err === "string") return err;
+  if (err instanceof Error) return err.message;
+  return "操作失败，请重试";
+}

@@ -1,0 +1,53 @@
+[package]
+name = "worknote"
+version = "0.5.0"
+description = "WorkNote - 本地优先的每日记录与轻待办桌面应用"
+authors = ["WorkNote"]
+edition = "2024"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+# The `_lib` suffix may seem redundant but it is necessary
+# to make the lib name unique and wouldn't conflict with the bin name.
+# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
+name = "worknote_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+# tray-icon：系统托盘（第二阶段「最小化到托盘 + 托盘快捷记录」）；
+# image-png：tray-icon 内置的 png 解码路径（图标本身用内嵌 RGBA，这里只是把该 feature 显式打开，
+# 避免依赖默认 feature 推断）。
+tauri = { version = "2", features = ["tray-icon", "image-png"] }
+tauri-plugin-opener = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-global-shortcut = "2"
+# 单实例：托盘常驻后，用户再点一次快捷方式/开始菜单不应该起第二个进程
+# （会出现两个托盘图标，且两个进程同时写同一个 SQLite 库）。
+tauri-plugin-single-instance = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio", "sqlite", "migrate", "macros"] }
+chrono = { version = "0.4", features = ["serde"] }
+tokio = { version = "1", features = ["sync", "time"] }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+
+
+# Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = 3
+panic = "abort"
+strip = true
+
+# MSVC 19.44 在 -O2 下编译 libsqlite3-sys 内置的 sqlite3.c 会触发 C1001 内部编译器错误
+# （只在 release 构建出现，debug 用 -O0 正常）。单独把这个 C 依赖降到 -O0，
+# 业务代码仍按上面的 release 配置优化。
+[profile.release.package.libsqlite3-sys]
+opt-level = 0

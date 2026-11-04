@@ -1,0 +1,63 @@
+name: build-macos
+
+# 为什么需要 CI：Tauri 的 macOS 包（.app / .dmg）只能在 macOS 上构建，
+# Windows 上无法交叉编译（需要 Apple SDK、codesign、hdiutil）。
+# 这个工作流在 GitHub 的 macOS runner 上产出 dmg。
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    name: macOS ${{ matrix.label }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-14 # Apple Silicon
+            target: aarch64-apple-darwin
+            label: arm64
+          - runner: macos-13 # Intel
+            target: x86_64-apple-darwin
+            label: x64
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "src-tauri -> target"
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build dmg (unsigned)
+        # 不签名：产物可直接运行，但首次打开需要「右键 → 打开」绕过 Gatekeeper。
+        # 需要签名/公证时，把下面的 env 换成仓库 Secrets（见 docs/macOS-构建说明.md）。
+        run: pnpm tauri build --target ${{ matrix.target }} --bundles dmg
+
+      - name: Upload dmg
+        uses: actions/upload-artifact@v4
+        with:
+          name: WorkNote-${{ matrix.label }}-dmg
+          path: src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*.dmg
+          if-no-files-found: error

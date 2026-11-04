@@ -1,0 +1,25 @@
+# 统一换行：仓库里存 LF，Windows 检出时按需转换。
+# 否则 Windows 上提交的 CRLF 文件在 macOS CI 上可能与格式化/校验工具冲突。
+* text=auto eol=lf
+
+# 二进制文件不做换行转换
+*.png binary
+*.ico binary
+*.icns binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.exe binary
+*.msi binary
+*.dmg binary
+
+# Windows 批处理必须保留 CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# 锁文件避免在 diff 里刷屏
+pnpm-lock.yaml linguist-generated=true

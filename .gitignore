@@ -1,0 +1,43 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Rust / Tauri 构建产物（src-tauri/.gitignore 里也有 /target/，这里再兜一层）
+src-tauri/target/
+src-tauri/gen/schemas/
+
+# 本地数据库（正常在 %APPDATA%\WorkNote，防止手滑拷进项目目录）
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+
+# 本地文档与验收截图（只留在开发机，不进代码库）
+docs/
+WorkNote_Windows_*.md
+
+# 临时文件
+*.tsbuildinfo
+.tmp*
+tmp/
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

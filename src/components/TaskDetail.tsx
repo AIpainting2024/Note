@@ -1,6 +1,7 @@
 import { Check, GripVertical, Plus, Trash2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api, errorText } from "../lib/api";
+import { imageFromClipboard, insertImageMarker, uploadImageFile } from "../lib/attachments";
 import { cn } from "../lib/cn";
 import { dueLabel, timeOf } from "../lib/dates";
 import type { Entry } from "../lib/types";
@@ -8,7 +9,6 @@ import { useProjects } from "../stores/projects";
 import { useUI } from "../stores/ui";
 import { Button } from "./ui/Button";
 import { Checkbox } from "./ui/Checkbox";
-import { Input } from "./ui/Input";
 
 /** 右侧任务详情：字段编辑 + 子任务清单（勾选 / 添加 / 改名 / 拖动排序 / 删除） */
 export function TaskDetail() {
@@ -50,6 +50,21 @@ export function TaskDetail() {
   if (!entry) return null;
 
   const refresh = () => useUI.getState().bumpRevision();
+
+  /** 标题里粘贴截图：存成附件后把标记插到光标处并立即保存 */
+  const pasteImage = async (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const file = imageFromClipboard(event.clipboardData);
+    if (!file) return;
+    event.preventDefault();
+    try {
+      const att = await uploadImageFile(file, entry.id);
+      const next = insertImageMarker(event.currentTarget, setTitle, title, att.id);
+      setTitle(next);
+      void patch({ content: next });
+    } catch (err) {
+      setError(errorText(err));
+    }
+  };
 
   const patch = async (data: Parameters<typeof api.updateEntry>[1]) => {
     try {
@@ -162,7 +177,8 @@ export function TaskDetail() {
           </div>
           <textarea
             value={title}
-            rows={Math.min(4, title.split("\n").length + 1)}
+            rows={Math.min(8, title.split("\n").length + 1)}
+            onPaste={(e) => void pasteImage(e)}
             onChange={(e) => setTitle(e.target.value)}
             onBlur={() => {
               const next = title.trim();
@@ -258,16 +274,26 @@ export function TaskDetail() {
                   />
                 </div>
                 {editingChild === child.id ? (
-                  <Input
+                  <textarea
                     autoFocus
                     value={childDraft}
+                    rows={Math.min(10, Math.max(1, childDraft.split("\n").length))}
                     onChange={(e) => setChildDraft(e.target.value)}
                     onBlur={() => void renameChild(child)}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.nativeEvent.isComposing) void renameChild(child);
+                      if (e.nativeEvent.isComposing) return;
+                      // Enter 提交，Shift+Enter 换行（子任务也支持多行/粘贴整段文字）
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        void renameChild(child);
+                      }
                       if (e.key === "Escape") setEditingChild(null);
                     }}
-                    className="h-6 flex-1 text-[12px]"
+                    className={cn(
+                      "min-h-[24px] min-w-0 flex-1 resize-none rounded border border-line bg-panel",
+                      "px-1.5 py-1 text-[12.5px] leading-snug text-ink",
+                      "focus:border-accent focus:outline-none",
+                    )}
                   />
                 ) : (
                   <button
@@ -277,7 +303,7 @@ export function TaskDetail() {
                       setChildDraft(child.content);
                     }}
                     className={cn(
-                      "min-w-0 flex-1 text-left text-[12.5px] leading-snug",
+                      "min-w-0 flex-1 whitespace-pre-wrap break-words text-left text-[12.5px] leading-snug",
                       child.completedAt ? "text-ink-faint line-through" : "text-ink",
                     )}
                   >

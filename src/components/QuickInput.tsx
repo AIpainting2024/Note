@@ -1,6 +1,11 @@
 import { CornerDownLeft } from "lucide-react";
 import { useRef, useState } from "react";
 import { api, errorText } from "../lib/api";
+import {
+  imageFromClipboard,
+  insertImageMarker,
+  uploadImageFile,
+} from "../lib/attachments";
 import { cn } from "../lib/cn";
 import { projectHex, splitProjectToken } from "../lib/projects";
 import { useProjects } from "../stores/projects";
@@ -41,7 +46,9 @@ export function QuickInput({ placeholder, autoFocus, onSaved, compact }: Props) 
     setSaving(true);
     setError(null);
     try {
-      await api.createEntry(content, { isTodo, projectId: project?.id ?? null });
+      const created = await api.createEntry(content, { isTodo, projectId: project?.id ?? null });
+      // 正文里的 ![](att:<id>) 之前先落在「未归属」状态，保存后认领到这条记录
+      await api.claimAttachments(created.id, content).catch(() => undefined);
       setText("");
       if (ref.current) ref.current.style.height = "auto";
       useUI.getState().bumpRevision();
@@ -56,6 +63,21 @@ export function QuickInput({ placeholder, autoFocus, onSaved, compact }: Props) 
   const grow = (el: HTMLTextAreaElement) => {
     el.style.height = "auto";
     el.style.height = `${Math.min(el.scrollHeight, 220)}px`;
+  };
+
+  /** 粘贴截图：图片先落库（未归属），记录保存后再认领 */
+  const pasteImage = async (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const file = imageFromClipboard(event.clipboardData);
+    if (!file) return;
+    event.preventDefault();
+    try {
+      const att = await uploadImageFile(file, null);
+      const next = insertImageMarker(ref.current, setText, text, att.id);
+      setText(next);
+      if (ref.current) grow(ref.current);
+    } catch (err) {
+      setError(errorText(err));
+    }
   };
 
   return (
@@ -75,6 +97,7 @@ export function QuickInput({ placeholder, autoFocus, onSaved, compact }: Props) 
           placeholder ??
           "记一笔……  Enter 换行，Ctrl+Enter 保存；以「- 」开头记为待办，末尾加 #项目名 归到项目"
         }
+        onPaste={(e) => void pasteImage(e)}
         onChange={(e) => {
           setText(e.target.value);
           grow(e.target);

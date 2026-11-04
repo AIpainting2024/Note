@@ -538,6 +538,7 @@ mod tests {
             backups_dir: data_dir.join("backups"),
             exports_dir: data_dir.join("exports"),
             logs_dir: data_dir.join("logs"),
+            attachments_dir: data_dir.join("attachments"),
             data_dir,
         };
         paths.ensure_dirs().unwrap();

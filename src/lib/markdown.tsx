@@ -1,7 +1,39 @@
 import React from "react";
+import { attachmentSrc, useAttachmentVersion } from "./attachments";
 
 const INLINE =
-  /(\*\*[^*\n]+\*\*)|(`[^`\n]+`)|(\[[^\]\n]+\]\([^)\n]+\))|(\*[^*\n]+\*)/g;
+  /(!\[[^\]\n]*\]\([^)\n]+\))|(\*\*[^*\n]+\*\*)|(`[^`\n]+`)|(\[[^\]\n]+\]\([^)\n]+\))|(\*[^*\n]+\*)/g;
+
+/** 整行就是一张图片：`![](att:12)` */
+const IMAGE_LINE = /^!\[([^\]]*)\]\(([^)]+)\)$/;
+
+/** 正文里的图片：`att:<id>` 由附件缓存换成 asset 协议地址 */
+function AttachmentImg({ src, alt }: { src: string; alt?: string }) {
+  useAttachmentVersion();
+
+  if (!src.startsWith("att:")) {
+    return <span className="text-[11.5px] text-ink-faint">[图片]</span>;
+  }
+  const id = Number.parseInt(src.slice(4), 10);
+  const url = Number.isFinite(id) ? attachmentSrc(id) : undefined;
+
+  if (!url) {
+    return (
+      <span className="my-1 inline-flex items-center gap-1 rounded border border-dashed border-line px-2 py-1 text-[11px] text-ink-faint">
+        图片未加载
+      </span>
+    );
+  }
+
+  return (
+    <img
+      src={url}
+      alt={alt || "图片"}
+      loading="lazy"
+      className="my-1.5 max-h-[420px] max-w-full rounded-lg border border-line object-contain"
+    />
+  );
+}
 
 function renderInline(text: string): React.ReactNode[] {
   const nodes: React.ReactNode[] = [];
@@ -14,7 +46,10 @@ function renderInline(text: string): React.ReactNode[] {
     if (match.index > last) nodes.push(text.slice(last, match.index));
     const token = match[0];
 
-    if (token.startsWith("**")) {
+    if (token.startsWith("![")) {
+      const image = /^!\[([^\]]*)\]\(([^)]+)\)$/.exec(token);
+      nodes.push(<AttachmentImg key={`im${i++}`} src={image?.[2] ?? ""} alt={image?.[1]} />);
+    } else if (token.startsWith("**")) {
       nodes.push(<strong key={`b${i++}`}>{token.slice(2, -2)}</strong>);
     } else if (token.startsWith("`")) {
       nodes.push(<code key={`c${i++}`}>{token.slice(1, -1)}</code>);
@@ -55,6 +90,17 @@ export function Markdown({ text }: { text: string }) {
   };
 
   for (const line of lines) {
+    const imageLine = IMAGE_LINE.exec(line.trim());
+    if (imageLine) {
+      flushList();
+      blocks.push(
+        <div key={`img${key++}`}>
+          <AttachmentImg src={imageLine[2]} alt={imageLine[1]} />
+        </div>,
+      );
+      continue;
+    }
+
     const listMatch = /^\s*[-*]\s+(.*)$/.exec(line);
     if (listMatch) {
       listItems.push(listMatch[1]);

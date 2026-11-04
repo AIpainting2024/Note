@@ -1,6 +1,6 @@
 [package]
 name = "worknote"
-version = "0.5.0"
+version = "0.5.1"
 description = "WorkNote - 本地优先的每日记录与轻待办桌面应用"
 authors = ["WorkNote"]
 edition = "2024"
@@ -21,7 +21,8 @@ tauri-build = { version = "2", features = [] }
 # tray-icon：系统托盘（第二阶段「最小化到托盘 + 托盘快捷记录」）；
 # image-png：tray-icon 内置的 png 解码路径（图标本身用内嵌 RGBA，这里只是把该 feature 显式打开，
 # 避免依赖默认 feature 推断）。
-tauri = { version = "2", features = ["tray-icon", "image-png"] }
+# protocol-asset：正文里的图片用 convertFileSrc 走 asset 协议显示本地文件。
+tauri = { version = "2", features = ["tray-icon", "image-png", "protocol-asset"] }
 tauri-plugin-opener = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-global-shortcut = "2"
@@ -32,6 +33,8 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio", "sqlite", "migrate", "macros"] }
 chrono = { version = "0.4", features = ["serde"] }
+# 图片附件走 IPC 时用 base64 传字节（前端 File → base64 → Rust 解码落盘）
+base64 = "0.22"
 tokio = { version = "1", features = ["sync", "time"] }
 
 [dev-dependencies]

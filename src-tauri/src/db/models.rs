@@ -253,3 +253,17 @@ pub struct BackupInfo {
     pub size_bytes: i64,
     pub created_at: String,
 }
+
+/// 图片附件（v0.5.1）。正文里以 `att:<id>` 引用，文件在数据目录 `attachments/` 下。
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Attachment {
+    pub id: i64,
+    /// 所属记录；粘贴后未保存时为 None
+    pub entry_id: Option<i64>,
+    pub mime: String,
+    pub byte_size: i64,
+    /// 绝对路径（前端用 convertFileSrc 转成可显示的 URL）
+    pub path: String,
+    pub created_at: String,
+}

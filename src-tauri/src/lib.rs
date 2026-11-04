@@ -394,6 +394,29 @@ pub fn run() {
             start_auto_backup(app.handle().clone());
             // 提醒调度：启动立即跑一次，之后每 60 秒一次（软件内通知，不接系统通知）。
             commands::reminders::start_reminder_scheduler(app.handle().clone());
+
+            // 允许 asset 协议读取附件目录（正文里的图片靠它显示）。
+            // 注意：不能用配置里的 $APPDATA —— 它指向应用专属目录（%APPDATA%\<identifier>），
+            // 而我们的数据目录是 %APPDATA%\WorkNote，所以在运行时按真实路径授权。
+            {
+                let attachments_dir = app.state::<AppState>().paths.attachments_dir.clone();
+                if let Err(err) = app.asset_protocol_scope().allow_directory(&attachments_dir, true) {
+                    eprintln!("[WorkNote] 允许图片目录访问失败（图片可能显示不出来）：{err}");
+                }
+            }
+
+            // 清理「粘贴了图片但记录没保存」留下的孤儿文件（超过 1 天的）。
+            let handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                let state = handle.state::<AppState>();
+                let pool = state.pool.read().await.clone();
+                match commands::attachments::sweep_orphans(&pool, &state.paths).await {
+                    Ok(0) => {}
+                    Ok(n) => println!("[WorkNote] 清理孤儿图片 {n} 张"),
+                    Err(err) => eprintln!("[WorkNote] 清理孤儿图片失败：{err}"),
+                }
+            });
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -435,6 +458,11 @@ pub fn run() {
             commands::system::open_data_dir,
             commands::system::set_global_shortcut,
             commands::system::set_shortcut,
+            commands::attachments::save_attachment,
+            commands::attachments::attach_file,
+            commands::attachments::list_attachments,
+            commands::attachments::claim_attachments,
+            commands::attachments::delete_attachment,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

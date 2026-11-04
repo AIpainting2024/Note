@@ -122,3 +122,14 @@ export type Theme = "light" | "dark" | "system";
 
 /** 日历视图模式 */
 export type CalendarMode = "month" | "week" | "day";
+
+/** 图片附件：正文里以 `att:<id>` 引用，文件存在数据目录 attachments/ 下 */
+export type Attachment = {
+  id: number;
+  entryId: number | null;
+  mime: string;
+  byteSize: number;
+  /** 绝对路径，前端用 convertFileSrc 转成可显示的地址 */
+  path: string;
+  createdAt: string;
+};

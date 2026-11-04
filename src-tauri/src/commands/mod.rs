@@ -2,6 +2,7 @@
 //!
 //! v0.4 新增 `projects`（项目）与 `children`（任务层级）两个模块。
 
+pub mod attachments;
 pub mod backup;
 pub mod children;
 pub mod entries;

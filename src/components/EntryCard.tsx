@@ -1,5 +1,7 @@
+import { open as openFileDialog } from "@tauri-apps/plugin-dialog";
 import {
   CalendarDays,
+  ImagePlus,
   ListChecks,
   Pencil,
   Pin,
@@ -10,6 +12,12 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { api, errorText } from "../lib/api";
+import {
+  imageFromClipboard,
+  insertImageMarker,
+  loadEntryAttachments,
+  uploadImageFile,
+} from "../lib/attachments";
 import { cn } from "../lib/cn";
 import { dueLabel, timeOf } from "../lib/dates";
 import { Markdown } from "../lib/markdown";
@@ -39,6 +47,43 @@ export function EntryCard({ entry, onChange }: Props) {
   useEffect(() => {
     if (!editing) setDraft(entry.content);
   }, [entry.content, editing]);
+
+  // 正文里可能有 att:<id> 图片标记，先把地址取回来（缓存命中会触发重渲染）
+  useEffect(() => {
+    void loadEntryAttachments(entry.id);
+  }, [entry.id, entry.content]);
+
+  /** 粘贴截图：存成附件后把 ![](att:<id>) 插到光标处 */
+  const pasteImage = async (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const file = imageFromClipboard(event.clipboardData);
+    if (!file) return;
+    event.preventDefault();
+    try {
+      const att = await uploadImageFile(file, entry.id);
+      const next = insertImageMarker(textarea.current, setDraft, draft, att.id);
+      setDraft(next);
+      scheduleSave(next);
+    } catch (err) {
+      setError(errorText(err));
+    }
+  };
+
+  /** 「插入图片」按钮：选本地文件 */
+  const pickImage = async () => {
+    try {
+      const selected = await openFileDialog({
+        multiple: false,
+        filters: [{ name: "图片", extensions: ["png", "jpg", "jpeg", "gif", "webp", "bmp"] }],
+      });
+      if (!selected || typeof selected !== "string") return;
+      const att = await api.attachFile(entry.id, selected);
+      const next = insertImageMarker(textarea.current, setDraft, draft, att.id);
+      setDraft(next);
+      scheduleSave(next);
+    } catch (err) {
+      setError(errorText(err));
+    }
+  };
 
   useEffect(() => {
     if (saveState !== "saved") return;
@@ -139,11 +184,13 @@ export function EntryCard({ entry, onChange }: Props) {
 
         <div className="min-w-0 flex-1">
           {editing ? (
+            <>
             <textarea
               ref={textarea}
               value={draft}
               autoFocus
               rows={Math.min(12, draft.split("\n").length + 1)}
+              onPaste={(e) => void pasteImage(e)}
               onChange={(e) => {
                 setDraft(e.target.value);
                 scheduleSave(e.target.value);
@@ -164,6 +211,18 @@ export function EntryCard({ entry, onChange }: Props) {
               }}
               className="w-full bg-transparent text-[13.5px] leading-relaxed text-ink focus:outline-none"
             />
+            <div className="mt-1 flex items-center gap-2 text-[11px] text-ink-faint">
+              <button
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => void pickImage()}
+                className="flex items-center gap-1 rounded px-1.5 py-0.5 hover:bg-panel-2 hover:text-ink"
+              >
+                <ImagePlus size={12} /> 插入图片
+              </button>
+              <span className="text-ink-faint/80">截图可直接 Ctrl+V 粘贴</span>
+            </div>
+            </>
           ) : (
             <div className={cn("text-[13.5px] leading-relaxed", done && "text-ink-faint line-through")}>
               <Markdown text={entry.content} />

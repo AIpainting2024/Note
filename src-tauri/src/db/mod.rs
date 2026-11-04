@@ -41,6 +41,8 @@ pub struct Paths {
     pub backups_dir: PathBuf,
     pub exports_dir: PathBuf,
     pub logs_dir: PathBuf,
+    /// 图片等附件的落盘目录（正文里用 `att:<id>` 引用）。
+    pub attachments_dir: PathBuf,
 }
 
 /// 跨平台的用户数据根目录。
@@ -112,6 +114,7 @@ impl Paths {
             backups_dir: data_dir.join("backups"),
             exports_dir: data_dir.join("exports"),
             logs_dir: data_dir.join("logs"),
+            attachments_dir: data_dir.join("attachments"),
             data_dir,
         })
     }
@@ -124,6 +127,7 @@ impl Paths {
             &self.backups_dir,
             &self.exports_dir,
             &self.logs_dir,
+            &self.attachments_dir,
         ];
         for dir in dirs {
             std::fs::create_dir_all(dir)

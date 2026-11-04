@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import type {
+  Attachment,
   BackupInfo,
   Counts,
   Entry,
@@ -120,6 +121,23 @@ export const api = {
   exportCsv: (path: string) => invoke<void>("export_csv", { path }),
 
   openDataDir: () => invoke<void>("open_data_dir"),
+
+  // ---- 图片附件（v0.5.1）----
+  /** 粘贴图片：前端把 File 读成 base64 传过来；entryId 为空表示先挂着等保存后认领 */
+  saveAttachment: (entryId: number | null, mime: string, dataBase64: string) =>
+    invoke<Attachment>("save_attachment", { entryId, mime, dataBase64 }),
+
+  /** 选择本地文件上传 */
+  attachFile: (entryId: number | null, filePath: string) =>
+    invoke<Attachment>("attach_file", { entryId, filePath }),
+
+  listAttachments: (entryId: number) => invoke<Attachment[]>("list_attachments", { entryId }),
+
+  /** 保存记录后，把正文里 att:<id> 指向的图片挂到这条记录上 */
+  claimAttachments: (entryId: number, content: string) =>
+    invoke<number>("claim_attachments", { entryId, content }),
+
+  deleteAttachment: (id: number) => invoke<void>("delete_attachment", { id }),
 };
 
 /** 统一把 invoke 抛出的错误转成可展示文案 */

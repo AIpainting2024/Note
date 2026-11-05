@@ -481,6 +481,8 @@ pub fn run() {
             commands::pomodoro::pomodoro_summary,
             commands::pomodoro::pomodoro_list,
             commands::pomodoro::pomodoro_clear,
+            commands::views::list_calendar_range,
+            commands::views::list_inbox_entries,
             commands::attachments::save_attachment,
             commands::attachments::attach_file,
             commands::attachments::list_attachments,

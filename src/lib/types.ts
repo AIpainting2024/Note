@@ -127,6 +127,7 @@ export type View =
   | "today"
   | "calendar"
   | "todos"
+  | "inbox"
   | "project"
   | "quadrant"
   | "pomodoro"

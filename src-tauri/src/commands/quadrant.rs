@@ -48,6 +48,7 @@ pub async fn list_quadrant_entries(state: State<'_, AppState>) -> Result<Vec<Ent
     let pool = state.pool.read().await;
     let sql = select_sql(
         "WHERE is_deleted = 0 AND quadrant IS NOT NULL AND parent_id IS NULL \
+           AND completed_at IS NULL \
            AND COALESCE(project_is_secret, 0) = 0 \
          ORDER BY quadrant ASC, is_pinned DESC, updated_at DESC",
     );

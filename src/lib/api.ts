@@ -170,6 +170,13 @@ export const api = {
   pomodoroSummary: () => invoke<PomodoroSummary>("pomodoro_summary"),
   pomodoroList: (limit?: number) => invoke<PomodoroSession[]>("pomodoro_list", { limit }),
   pomodoroClear: () => invoke<number>("pomodoro_clear"),
+
+  // ---- 视图查询（v0.7）----
+  /** 日历区间：区间内「录入」或「截止」的记录/任务（不含子任务、不含保密项目） */
+  listCalendarRange: (start: string, end: string) =>
+    invoke<Entry[]>("list_calendar_range", { start, end }),
+  /** 收件箱：没有归属项目的顶层记录/任务 */
+  listInboxEntries: (limit?: number) => invoke<Entry[]>("list_inbox_entries", { limit }),
 };
 
 /** 统一把 invoke 抛出的错误转成可展示文案 */

@@ -1,19 +1,59 @@
 import { emit } from "@tauri-apps/api/event";
+import { LogicalSize } from "@tauri-apps/api/dpi";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { CornerDownLeft } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { CornerDownLeft, GripVertical } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { api, errorText } from "../lib/api";
+import type { Project } from "../lib/types";
 import { Button } from "../components/ui/Button";
+import { useSecret } from "../stores/secret";
 
-/** 全局快捷键唤起的独立小窗：只做一件事——记一笔，然后收起 */
+const WIDTH = 560;
+const MIN_HEIGHT = 220;
+const MAX_HEIGHT = 560;
+
+/**
+ * 全局快捷键唤起的独立小窗（v0.7）：
+ * - 顶部条可拖动整个窗口，条上带项目下拉，直接决定这条记到哪个项目；
+ * - 输入框随内容自动向下扩展，窗口高度跟着长，不出现内部滚动条。
+ */
 export default function QuickWindow() {
   const [text, setText] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [projectId, setProjectId] = useState<number | null>(null);
+  const [projects, setProjects] = useState<Project[]>([]);
   const ref = useRef<HTMLTextAreaElement>(null);
+  const unlocked = useSecret((s) => s.status.unlocked);
+
+  useEffect(() => {
+    void useSecret.getState().load();
+    api
+      .listProjects(true)
+      .then((list) => setProjects(list))
+      .catch(() => undefined);
+  }, []);
+
+  // 保密项目未解锁时不进下拉
+  const options = useMemo(
+    () => projects.filter((p) => p.status !== "archived" && (!p.isSecret || unlocked)),
+    [projects, unlocked],
+  );
+
+  const fit = (el: HTMLTextAreaElement) => {
+    el.style.height = "auto";
+    const textHeight = Math.max(el.scrollHeight, 84);
+    el.style.height = `${textHeight}px`;
+    const total = 36 + textHeight + 52;
+    const height = Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, total));
+    void getCurrentWindow()
+      .setSize(new LogicalSize(WIDTH, height))
+      .catch(() => undefined);
+  };
 
   useEffect(() => {
     ref.current?.focus();
+    if (ref.current) fit(ref.current);
   }, []);
 
   const hide = async () => {
@@ -29,14 +69,25 @@ export default function QuickWindow() {
     const raw = text.trim();
     if (!raw || saving) return;
 
+    // 行首「- 」= 待办；末尾 #项目名 仍可用（下拉选了项目时以拉为准）
     const isTodo = /^[-*]\s+/.test(raw);
-    const content = raw.replace(/^[-*]\s+/, "");
+    let content = raw.replace(/^[-*]\s+/, "");
+    let targetProject = projectId;
+    const hash = /(?:^|\s)#([^\s#]+)\s*$/.exec(content);
+    if (hash && targetProject == null) {
+      const found = options.find((p) => p.name.trim() === hash[1]);
+      if (found) {
+        targetProject = found.id;
+        content = content.slice(0, hash.index).trimEnd();
+      }
+    }
 
     setSaving(true);
     setError(null);
     try {
-      await api.createEntry(content, { isTodo });
+      await api.createEntry(content, { isTodo, projectId: targetProject });
       setText("");
+      if (ref.current) fit(ref.current);
       await emit("entries-changed");
       await hide();
     } catch (err) {
@@ -48,21 +99,48 @@ export default function QuickWindow() {
 
   return (
     <div className="flex h-full flex-col bg-panel text-ink">
-      <div
-        data-tauri-drag-region
-        className="flex h-7 shrink-0 items-center justify-between px-3 text-[11px] text-ink-faint"
-      >
-        <span data-tauri-drag-region>快速记录</span>
-        <span data-tauri-drag-region>Esc 收起</span>
+      {/* 顶部条：左边整块可拖动窗口，右边项目下拉（下拉区域不参与拖动） */}
+      <div className="flex h-9 shrink-0 items-center gap-2 border-b border-line bg-panel-2 px-2.5">
+        <div
+          data-tauri-drag-region
+          className="flex h-full flex-1 items-center gap-1.5 select-none"
+          title="拖动这里移动窗口"
+        >
+          <GripVertical size={13} className="text-ink-faint" />
+          <span data-tauri-drag-region className="text-[11.5px] text-ink-muted">
+            快速记录
+          </span>
+        </div>
+
+        <select
+          value={projectId ?? ""}
+          onChange={(e) => setProjectId(e.target.value ? Number(e.target.value) : null)}
+          title="记到哪个项目"
+          className="h-6 max-w-[150px] rounded-md border border-line bg-panel px-1.5 text-[11.5px] text-ink focus:border-accent focus:outline-none"
+        >
+          <option value="">不归项目</option>
+          {options.map((project) => (
+            <option key={project.id} value={project.id}>
+              {project.name}
+            </option>
+          ))}
+        </select>
+
+        <span data-tauri-drag-region className="shrink-0 select-none text-[10.5px] text-ink-faint">
+          Esc 收起
+        </span>
       </div>
 
-      <div className="min-h-0 flex-1 px-3">
+      <div className="min-h-0 flex-1 px-3 pt-2">
         <textarea
           ref={ref}
           value={text}
           rows={3}
           placeholder="随手记一笔……  以「- 」开头记为待办"
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => {
+            setText(e.target.value);
+            fit(e.currentTarget);
+          }}
           onKeyDown={(e) => {
             if (e.nativeEvent.isComposing) return;
             if (e.key === "Escape") {
@@ -74,7 +152,7 @@ export default function QuickWindow() {
               void save();
             }
           }}
-          className="h-full w-full bg-transparent text-[13.5px] leading-relaxed text-ink placeholder:text-ink-faint focus:outline-none"
+          className="h-full w-full resize-none overflow-hidden bg-transparent text-[13.5px] leading-relaxed text-ink placeholder:text-ink-faint focus:outline-none"
         />
       </div>
 

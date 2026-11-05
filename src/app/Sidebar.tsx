@@ -4,6 +4,7 @@ import {
   ChevronsUpDown,
   FolderKanban,
   Grid2x2,
+  Inbox,
   ListChecks,
   Lock,
   LockOpen,
@@ -30,6 +31,7 @@ const NAV: { view: View; label: string; icon: typeof Sun }[] = [
   { view: "today", label: "今日", icon: Sun },
   { view: "calendar", label: "日历", icon: CalendarDays },
   { view: "todos", label: "待办", icon: ListChecks },
+  { view: "inbox", label: "收件箱", icon: Inbox },
   { view: "quadrant", label: "四象限", icon: Grid2x2 },
   { view: "pomodoro", label: "番茄钟", icon: Timer },
 ];

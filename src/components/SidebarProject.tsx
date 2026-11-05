@@ -131,10 +131,13 @@ export function SidebarProject({ project, active, expanded, onToggle, onOpenProj
                 <button
                   type="button"
                   onClick={() => {
+                    // 右侧详情 + 中间内容区一起联动（v0.7 需求 3/4）：
+                    // 有项目就切到该项目的项目页，没有项目就切到收件箱。
+                    const targetProject = task.projectId ?? project.id ?? null;
                     setSelectedEntry(task);
-                    // 项目页的「添加任务」跟着切到这个任务所属项目（需求：录入框同步）
-                    useUI.getState().setAddProjectId(task.projectId ?? project.id);
-                    useUI.getState().setSelectedProject(task.projectId ?? project.id);
+                    useUI.getState().setAddProjectId(targetProject);
+                    useUI.getState().setSelectedProject(targetProject);
+                    useUI.getState().setView(targetProject == null ? "inbox" : "project");
                   }}
                   className="min-w-0 flex-1 text-left"
                   title={task.content}

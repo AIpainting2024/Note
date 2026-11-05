@@ -1,7 +1,6 @@
 import { endOfMonth, format, startOfMonth } from "date-fns";
 import { ChevronLeft, ChevronRight, RotateCcw, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Calendar } from "../components/Calendar";
 import { MonthSquares } from "../components/MonthSquares";
 import { DayView } from "../components/DayView";
 import { PageHeader } from "../components/PageHeader";
@@ -31,10 +30,30 @@ export function CalendarPage() {
   const week = weekDays(selectedDay);
   const { todos: weekTodos } = useTodosRange(week[0], week[6]);
 
-  // 月度方格视图：整月的待办（只含公开任务，保密项目的任务不进入日历）
+  // 月度方格视图：整月的「录入 + 截止」内容（不含子任务；保密项目不进日历）
   const monthStart = format(startOfMonth(new Date(`${selectedDay}T00:00:00`)), "yyyy-MM-dd");
   const monthEnd = format(endOfMonth(new Date(`${selectedDay}T00:00:00`)), "yyyy-MM-dd");
-  const { todos: monthTodos, loading: monthLoading } = useTodosRange(monthStart, monthEnd);
+  const [monthItems, setMonthItems] = useState<Entry[]>([]);
+  const [monthLoading, setMonthLoading] = useState(true);
+
+  useEffect(() => {
+    let alive = true;
+    setMonthLoading(true);
+    api
+      .listCalendarRange(monthStart, monthEnd)
+      .then((list) => {
+        if (alive) setMonthItems(list);
+      })
+      .catch((err) => {
+        if (alive) setTrashError(errorText(err));
+      })
+      .finally(() => {
+        if (alive) setMonthLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [monthStart, monthEnd, revision]);
 
   const addTaskOnDay = async (day: string, content: string) => {
     try {
@@ -109,10 +128,6 @@ export function CalendarPage() {
 
   return (
     <div className="flex min-h-0 flex-1">
-      <div className="w-[248px] shrink-0 overflow-y-auto border-r border-line bg-panel-2 px-3 py-4">
-        <Calendar selected={selectedDay} onSelect={setSelectedDay} />
-      </div>
-
       <div className="flex min-w-0 flex-1 flex-col">
         <PageHeader
           title={title}
@@ -207,7 +222,7 @@ export function CalendarPage() {
             ) : (
               <MonthSquares
                 anchor={selectedDay}
-                todos={monthTodos}
+                items={monthItems}
                 loading={monthLoading}
                 onOpenDay={(day) => {
                   setSelectedDay(day);

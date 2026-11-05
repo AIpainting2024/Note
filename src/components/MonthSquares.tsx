@@ -8,7 +8,8 @@ import { Checkbox } from "./ui/Checkbox";
 type Props = {
   /** 当前月里的一天（YYYY-MM-DD） */
   anchor: string;
-  todos: Entry[];
+  /** 区间内的记录 + 任务（含按录入日、按截止日两种来源） */
+  items: Entry[];
   loading: boolean;
   onOpenDay: (day: string) => void;
   onAdd: (day: string, content: string) => Promise<void>;
@@ -19,11 +20,14 @@ const WEEK_LABELS = ["一", "二", "三", "四", "五", "六", "日"];
 const MAX_VISIBLE = 3;
 
 /**
- * 月度方格视图（v0.6）：
- * 每个日期是一个正方形，格子里直接列出当天的任务条目（前置小方块可勾选），
- * 也可以在格子里直接新增任务。只展示公开任务（保密项目的任务不进入日历）。
+ * 月度方格视图（v0.6 起，v0.7 扩展）：
+ * 每个日期是一个正方形，格子里列出当天内容——
+ * - 有截止日期的任务：放在截止日那天；
+ * - 记录（便签）与没有截止日期的任务：放在**录入日**那天。
+ * 任务前面有小方块可勾选完成；记录前面是小圆点（记录没有完成态）。
+ * 也可以在格子里直接新增任务。只展示公开内容（保密项目不进日历）。
  */
-export function MonthSquares({ anchor, todos, loading, onOpenDay, onAdd, onToggle }: Props) {
+export function MonthSquares({ anchor, items, loading, onOpenDay, onAdd, onToggle }: Props) {
   const base = new Date(`${anchor}T00:00:00`);
   const monthStart = startOfMonth(base);
   const gridStart = startOfWeek(monthStart, { weekStartsOn: 1 });
@@ -34,15 +38,26 @@ export function MonthSquares({ anchor, todos, loading, onOpenDay, onAdd, onToggl
   const [addingDay, setAddingDay] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
 
-  const visible = todos.filter((entry) => entry.dueDate && !entry.projectIsSecret);
+  const visible = items.filter((entry) => !entry.projectIsSecret);
 
+  // 归位规则：有截止日期 → 截止日；否则 → 录入日
   const byDay = new Map<string, Entry[]>();
   for (const entry of visible) {
-    const key = entry.dueDate ?? "";
+    const key = entry.dueDate ?? entry.day;
     if (!key) continue;
     const list = byDay.get(key) ?? [];
     list.push(entry);
     byDay.set(key, list);
+  }
+  // 同一天里任务在前、记录在后，已完成的沉底
+  for (const list of byDay.values()) {
+    list.sort((a, b) => {
+      const doneA = a.completedAt ? 1 : 0;
+      const doneB = b.completedAt ? 1 : 0;
+      if (doneA !== doneB) return doneA - doneB;
+      if (a.isTodo !== b.isTodo) return a.isTodo ? -1 : 1;
+      return a.createdAt.localeCompare(b.createdAt);
+    });
   }
 
   const submit = async (day: string) => {
@@ -66,7 +81,10 @@ export function MonthSquares({ anchor, todos, loading, onOpenDay, onAdd, onToggl
         ))}
       </div>
 
-      <div className="grid min-h-0 flex-1 grid-cols-7 gap-1.5" style={{ gridTemplateRows: `repeat(${days.length / 7}, minmax(0, 1fr))` }}>
+      <div
+        className="grid min-h-0 flex-1 grid-cols-7 gap-1.5"
+        style={{ gridTemplateRows: `repeat(${days.length / 7}, minmax(0, 1fr))` }}
+      >
         {days.map((date) => {
           const day = format(date, "yyyy-MM-dd");
           const list = byDay.get(day) ?? [];
@@ -109,12 +127,19 @@ export function MonthSquares({ anchor, todos, loading, onOpenDay, onAdd, onToggl
                 {list.slice(0, MAX_VISIBLE).map((entry) => (
                   <div key={entry.id} className="flex items-start gap-1">
                     <div className="mt-[2px] shrink-0">
-                      <Checkbox
-                        size="sm"
-                        checked={Boolean(entry.completedAt)}
-                        ariaLabel="标记为完成"
-                        onCheckedChange={(checked) => void onToggle(entry, checked)}
-                      />
+                      {entry.isTodo ? (
+                        <Checkbox
+                          size="sm"
+                          checked={Boolean(entry.completedAt)}
+                          ariaLabel="标记为完成"
+                          onCheckedChange={(checked) => void onToggle(entry, checked)}
+                        />
+                      ) : (
+                        <span
+                          aria-hidden
+                          className="mt-[5px] block h-[5px] w-[5px] rounded-full bg-ink-faint/70"
+                        />
+                      )}
                     </div>
                     <button
                       type="button"

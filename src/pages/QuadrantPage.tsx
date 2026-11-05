@@ -70,6 +70,8 @@ export function QuadrantPage() {
   const toggle = async (entry: Entry, done: boolean) => {
     try {
       await api.setEntryCompleted(entry.id, done);
+      // v0.7：勾完成后立即从象限消失（象限只留未完成事项）
+      if (done) setItems((prev) => prev.filter((item) => item.id !== entry.id));
       useUI.getState().bumpRevision();
     } catch (err) {
       setError(errorText(err));

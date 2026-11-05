@@ -48,6 +48,15 @@ export function EntryCard({ entry, onChange }: Props) {
     if (!editing) setDraft(entry.content);
   }, [entry.content, editing]);
 
+  // 进入编辑态时按内容高度撑开（v0.7：不出现滚动条）
+  useEffect(() => {
+    if (!editing) return;
+    const el = textarea.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [editing]);
+
   // 正文里可能有 att:<id> 图片标记，先把地址取回来（缓存命中会触发重渲染）
   useEffect(() => {
     void loadEntryAttachments(entry.id);
@@ -189,11 +198,15 @@ export function EntryCard({ entry, onChange }: Props) {
               ref={textarea}
               value={draft}
               autoFocus
-              rows={Math.min(12, draft.split("\n").length + 1)}
+              rows={1}
               onPaste={(e) => void pasteImage(e)}
               onChange={(e) => {
                 setDraft(e.target.value);
                 scheduleSave(e.target.value);
+                // v0.7：随内容自动向下扩展，不出现滚动条
+                const el = e.currentTarget;
+                el.style.height = "auto";
+                el.style.height = `${el.scrollHeight}px`;
               }}
               onBlur={() => {
                 window.clearTimeout(timer.current);
@@ -209,7 +222,7 @@ export function EntryCard({ entry, onChange }: Props) {
                   setEditing(false);
                 }
               }}
-              className="w-full bg-transparent text-[13.5px] leading-relaxed text-ink focus:outline-none"
+              className="w-full resize-none overflow-hidden bg-transparent text-[13.5px] leading-relaxed text-ink focus:outline-none"
             />
             <div className="mt-1 flex items-center gap-2 text-[11px] text-ink-faint">
               <button

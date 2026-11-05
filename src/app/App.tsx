@@ -8,6 +8,7 @@ import { TodoPanel } from "../components/TodoPanel";
 import { matchShortcut } from "../lib/shortcuts";
 import type { Notification, Theme } from "../lib/types";
 import { CalendarPage } from "../pages/CalendarPage";
+import { InboxPage } from "../pages/InboxPage";
 import { PomodoroPage } from "../pages/PomodoroPage";
 import { ProjectPage } from "../pages/ProjectPage";
 import { QuadrantPage } from "../pages/QuadrantPage";
@@ -116,6 +117,7 @@ export default function App() {
         {view === "today" && <TodayPage />}
         {view === "calendar" && <CalendarPage />}
         {view === "todos" && <TodosPage />}
+        {view === "inbox" && <InboxPage />}
         {view === "quadrant" && <QuadrantPage />}
         {view === "pomodoro" && <PomodoroPage />}
         {view === "project" && <ProjectPage />}

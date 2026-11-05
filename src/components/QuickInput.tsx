@@ -61,8 +61,9 @@ export function QuickInput({ placeholder, autoFocus, onSaved, compact }: Props) 
   };
 
   const grow = (el: HTMLTextAreaElement) => {
+    // v0.7：不再封顶、不出滚动条，整个框随内容自动向下扩展
     el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, 220)}px`;
+    el.style.height = `${el.scrollHeight}px`;
   };
 
   /** 粘贴截图：图片先落库（未归属），记录保存后再认领 */
@@ -110,7 +111,7 @@ export function QuickInput({ placeholder, autoFocus, onSaved, compact }: Props) 
           }
         }}
         className={cn(
-          "w-full bg-transparent px-1.5 py-1 text-[13.5px] leading-relaxed text-ink",
+          "w-full resize-none overflow-hidden bg-transparent px-1.5 py-1 text-[13.5px] leading-relaxed text-ink",
           "placeholder:text-ink-faint focus:outline-none",
         )}
       />

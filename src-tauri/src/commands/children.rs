@@ -91,6 +91,8 @@ pub async fn create_child_core(
     .map_err(|e| format!("保存子任务失败：{e}"))?;
 
     let id = result.last_insert_rowid();
+    // 新增子任务后父任务必然「未完成」，这里把父任务的完成态同步回去（v0.8）
+    crate::commands::entries::sync_parent_completion(&mut tx, parent_id, &now).await?;
     let entry = select_entry(&mut *tx, id)
         .await?
         .ok_or_else(|| "保存子任务失败：写入后无法读回该记录".to_string())?;
@@ -452,6 +454,56 @@ mod tests {
         patch.is_todo = Some(false);
         let converted = update_entry_core(&pool, lone.id, patch).await.unwrap();
         assert!(!converted.is_todo);
+
+        cleanup_test_pool(pool, dir).await;
+    }
+    #[tokio::test]
+    async fn parent_completion_follows_children() {
+        let (pool, dir) = test_pool().await;
+        let parent = add_parent(&pool, "父任务").await;
+        let child = create_child_core(&pool, parent.id, "子任务一").await.unwrap();
+
+        // 有未完成子任务时，父任务不允许打勾
+        let err = set_entry_completed_core(&pool, parent.id, true)
+            .await
+            .unwrap_err();
+        assert!(err.contains("子任务"), "应提示先完成子任务，实际：{err}");
+
+        // 子任务全部完成 → 父任务自动打勾
+        set_entry_completed_core(&pool, child.id, true).await.unwrap();
+        let parent_after = select_entry(&pool, parent.id).await.unwrap().unwrap();
+        assert!(
+            parent_after.completed_at.is_some(),
+            "子任务全部完成后父任务应自动完成"
+        );
+
+        // 取消一个子任务 → 父任务自动回到未完成
+        set_entry_completed_core(&pool, child.id, false).await.unwrap();
+        let parent_after = select_entry(&pool, parent.id).await.unwrap().unwrap();
+        assert!(
+            parent_after.completed_at.is_none(),
+            "有子任务未完成时父任务应为未完成"
+        );
+
+        cleanup_test_pool(pool, dir).await;
+    }
+
+    #[tokio::test]
+    async fn adding_child_reopens_completed_parent() {
+        let (pool, dir) = test_pool().await;
+        let parent = add_parent(&pool, "父任务").await;
+
+        // 没有子任务时可以直接完成
+        let done = set_entry_completed_core(&pool, parent.id, true).await.unwrap();
+        assert!(done.completed_at.is_some());
+
+        // 新增子任务后父任务回到未完成
+        create_child_core(&pool, parent.id, "新子任务").await.unwrap();
+        let parent_after = select_entry(&pool, parent.id).await.unwrap().unwrap();
+        assert!(
+            parent_after.completed_at.is_none(),
+            "新增子任务后父任务应回到未完成"
+        );
 
         cleanup_test_pool(pool, dir).await;
     }

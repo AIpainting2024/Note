@@ -1,5 +1,6 @@
 import { ChevronDown, ChevronRight, Clock, ListChecks } from "lucide-react";
 import { useEffect, useState } from "react";
+import { isOverdueRed } from "../lib/entries";
 import { api, errorText } from "../lib/api";
 import { cn } from "../lib/cn";
 import { dueLabel } from "../lib/dates";
@@ -156,7 +157,7 @@ export function SidebarProject({ project, active, expanded, onToggle, onOpenProj
                         <span
                           className={cn(
                             "flex items-center gap-0.5",
-                            due.tone === "overdue" && "text-danger",
+                            isOverdueRed(task, due.tone) && "text-danger",
                             due.tone === "today" && "text-warn",
                           )}
                         >

@@ -1,5 +1,6 @@
 import { CalendarClock, Check, Clock, ListChecks } from "lucide-react";
 import { useEffect, useState } from "react";
+import { isOverdueRed } from "../lib/entries";
 import { PageHeader } from "../components/PageHeader";
 import { Checkbox } from "../components/ui/Checkbox";
 import { api, errorText } from "../lib/api";
@@ -136,7 +137,7 @@ export function TodosPage() {
                         <span
                           className={cn(
                             "flex items-center gap-0.5",
-                            due.tone === "overdue" && "text-danger",
+                            isOverdueRed(entry, due.tone) && "text-danger",
                             due.tone === "today" && "text-warn",
                           )}
                         >

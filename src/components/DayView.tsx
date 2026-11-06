@@ -1,5 +1,6 @@
 import { Check, Clock } from "lucide-react";
 import { EntryList } from "./EntryList";
+import { isEffectivelyDone } from "../lib/entries";
 import { useDayEntries, useTodosRange } from "../hooks/useEntries";
 import { api } from "../lib/api";
 import { cn } from "../lib/cn";
@@ -75,7 +76,7 @@ export function DayView({ day }: { day: string }) {
 }
 
 function DayChip({ entry }: { entry: Entry }) {
-  const done = Boolean(entry.completedAt);
+  const done = isEffectivelyDone(entry);
   const due = entry.dueDate ? dueLabel(entry.dueDate, entry.dueTime) : null;
   return (
     <button

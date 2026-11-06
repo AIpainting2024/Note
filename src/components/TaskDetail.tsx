@@ -1,4 +1,4 @@
-import { Check, GripVertical, Plus, Trash2, X } from "lucide-react";
+import { GripVertical, Plus, Trash2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api, errorText } from "../lib/api";
 import { imageFromClipboard, insertImageMarker, uploadImageFile } from "../lib/attachments";
@@ -7,7 +7,6 @@ import { dueLabel, timeOf } from "../lib/dates";
 import type { Entry } from "../lib/types";
 import { useProjects } from "../stores/projects";
 import { useUI } from "../stores/ui";
-import { Button } from "./ui/Button";
 import { Checkbox } from "./ui/Checkbox";
 
 /** 右侧任务详情：字段编辑 + 子任务清单（勾选 / 添加 / 改名 / 拖动排序 / 删除） */
@@ -153,7 +152,6 @@ export function TaskDetail() {
 
   const done = Boolean(entry.completedAt);
   const doneChildren = children.filter((c) => c.completedAt).length;
-  const allChildrenDone = children.length > 0 && doneChildren === children.length;
   const due = entry.dueDate ? dueLabel(entry.dueDate, entry.dueTime) : null;
 
   return (
@@ -277,12 +275,22 @@ export function TaskDetail() {
                   <textarea
                     autoFocus
                     value={childDraft}
-                    rows={Math.min(10, Math.max(1, childDraft.split("\n").length))}
-                    onChange={(e) => setChildDraft(e.target.value)}
+                    // v0.8：和「记一笔」一样随内容自动换行、纵向扩展，不出滚动条
+                    ref={(el) => {
+                      if (!el) return;
+                      el.style.height = "auto";
+                      el.style.height = `${el.scrollHeight}px`;
+                    }}
+                    onChange={(e) => {
+                      setChildDraft(e.target.value);
+                      const el = e.currentTarget;
+                      el.style.height = "auto";
+                      el.style.height = `${el.scrollHeight}px`;
+                    }}
                     onBlur={() => void renameChild(child)}
                     onKeyDown={(e) => {
                       if (e.nativeEvent.isComposing) return;
-                      // Enter 提交，Shift+Enter 换行（子任务也支持多行/粘贴整段文字）
+                      // Enter 提交，Shift+Enter 换行
                       if (e.key === "Enter" && !e.shiftKey) {
                         e.preventDefault();
                         void renameChild(child);
@@ -290,7 +298,7 @@ export function TaskDetail() {
                       if (e.key === "Escape") setEditingChild(null);
                     }}
                     className={cn(
-                      "min-h-[24px] min-w-0 flex-1 resize-none rounded border border-line bg-panel",
+                      "min-h-[24px] min-w-0 flex-1 resize-none overflow-hidden rounded border border-line bg-panel",
                       "px-1.5 py-1 text-[12.5px] leading-snug text-ink",
                       "focus:border-accent focus:outline-none",
                     )}
@@ -322,29 +330,36 @@ export function TaskDetail() {
             ))}
           </div>
 
-          <div className="mt-1.5 flex items-center gap-1.5">
-            <Plus size={12} className="shrink-0 text-ink-faint" />
-            <input
+          <div className="mt-1.5 flex items-start gap-1.5">
+            <Plus size={12} className="mt-1.5 shrink-0 text-ink-faint" />
+            {/* v0.8：和「记一笔」一致——自动换行、随内容纵向扩展、无滚动条 */}
+            <textarea
               value={draft}
-              placeholder="添加子任务，回车确认"
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.nativeEvent.isComposing) void addChild();
+              rows={1}
+              placeholder="添加子任务，回车确认，Shift+Enter 换行"
+              ref={(el) => {
+                if (!el) return;
+                el.style.height = "auto";
+                el.style.height = `${el.scrollHeight}px`;
               }}
-              className="h-6 w-full bg-transparent text-[12px] text-ink placeholder:text-ink-faint focus:outline-none"
+              onChange={(e) => {
+                setDraft(e.target.value);
+                const el = e.currentTarget;
+                el.style.height = "auto";
+                el.style.height = `${el.scrollHeight}px`;
+              }}
+              onKeyDown={(e) => {
+                if (e.nativeEvent.isComposing) return;
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  void addChild();
+                }
+              }}
+              className="min-h-[24px] w-full resize-none overflow-hidden bg-transparent py-1 text-[12px] leading-snug text-ink placeholder:text-ink-faint focus:outline-none"
             />
           </div>
 
-          {allChildrenDone && !done && (
-            <div className="mt-2 rounded-md border border-accent/30 bg-accent-soft/50 px-2 py-1.5">
-              <p className="text-[11.5px] text-ink-muted">
-                子任务全部完成（{doneChildren}/{children.length}），要把这条任务也标记完成吗？
-              </p>
-              <Button variant="primary" size="sm" className="mt-1.5" onClick={() => void toggleComplete(true)}>
-                <Check size={12} /> 标记任务完成
-              </Button>
-            </div>
-          )}
+          {/* v0.8：子任务全部完成时后端会自动把父任务标记完成，这里不再需要手动提示 */}
         </div>
 
         {error && <p className="mt-2 text-[11.5px] text-danger">{error}</p>}

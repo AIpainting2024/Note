@@ -11,6 +11,7 @@ import {
   Undo2,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { isOverdueRed } from "../lib/entries";
 import { api, errorText } from "../lib/api";
 import {
   imageFromClipboard,
@@ -276,7 +277,7 @@ export function EntryCard({ entry, onChange }: Props) {
                 onClick={() => setShowDue((v) => !v)}
                 className={cn(
                   "flex items-center gap-0.5 rounded px-1 py-0.5 hover:bg-panel-2",
-                  due?.tone === "overdue" && "text-danger",
+                  isOverdueRed(entry, due?.tone ?? "") && "text-danger",
                   due?.tone === "today" && "text-warn",
                 )}
               >

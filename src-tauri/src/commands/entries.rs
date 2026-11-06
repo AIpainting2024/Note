@@ -297,6 +297,10 @@ pub async fn update_entry_core(
 }
 
 /// 勾选/取消完成：写入或清空 `completed_at`。
+///
+/// v0.8 父子联动（用户确认口径）：
+/// - 勾选**有子任务**的父任务时，若还有未完成子任务 → 直接报错，不允许勾；
+/// - 子任务状态变化后重算父任务：全部完成 → 父任务自动打勾；有未完成 → 父任务自动取消打勾。
 pub async fn set_entry_completed_core(
     pool: &SqlitePool,
     id: i64,
@@ -309,6 +313,31 @@ pub async fn set_entry_completed_core(
         .begin()
         .await
         .map_err(|e| format!("数据库事务开启失败：{e}"))?;
+
+    let parent_id: Option<i64> =
+        sqlx::query_scalar("SELECT parent_id FROM entries WHERE id = ?1 AND is_deleted = 0")
+            .bind(id)
+            .fetch_optional(&mut *tx)
+            .await
+            .map_err(|e| format!("读取记录失败：{e}"))?
+            .ok_or_else(|| "记录不存在或已被删除".to_string())?;
+
+    if completed {
+        let unfinished: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM entries \
+             WHERE parent_id = ?1 AND is_deleted = 0 AND completed_at IS NULL",
+        )
+        .bind(id)
+        .fetch_one(&mut *tx)
+        .await
+        .map_err(|e| format!("统计子任务失败：{e}"))?;
+        if unfinished > 0 {
+            return Err(format!(
+                "还有 {unfinished} 个子任务未完成，全部完成后这个任务才算完成"
+            ));
+        }
+    }
+
     let result = sqlx::query(
         "UPDATE entries SET completed_at = ?1, updated_at = ?2 WHERE id = ?3 AND is_deleted = 0",
     )
@@ -322,6 +351,11 @@ pub async fn set_entry_completed_core(
         return Err("记录不存在或已被删除".to_string());
     }
 
+    // 改的是子任务 → 父任务完成态跟着重算
+    if let Some(pid) = parent_id {
+        sync_parent_completion(&mut tx, pid, &now).await?;
+    }
+
     let entry = select_entry(&mut *tx, id)
         .await?
         .ok_or_else(|| "更新完成状态失败：写入后无法读回该记录".to_string())?;
@@ -331,6 +365,44 @@ pub async fn set_entry_completed_core(
     Ok(entry)
 }
 
+/// 重算父任务完成态：子任务全完成 → 打勾；否则 → 取消打勾（v0.8）。
+///
+/// 供子任务的勾选 / 新增 / 删除复用；父任务没有子任务时不动。
+pub(crate) async fn sync_parent_completion(
+    conn: &mut sqlx::SqliteConnection,
+    parent_id: i64,
+    now: &str,
+) -> Result<(), String> {
+    let (total, done): (i64, i64) = sqlx::query_as(
+        "SELECT COUNT(*), COALESCE(SUM(completed_at IS NOT NULL), 0) FROM entries \
+         WHERE parent_id = ?1 AND is_deleted = 0",
+    )
+    .bind(parent_id)
+    .fetch_one(&mut *conn)
+    .await
+    .map_err(|e| format!("统计子任务完成情况失败：{e}"))?;
+
+    if total == 0 {
+        return Ok(());
+    }
+
+    let completed_at: Option<String> = if done == total {
+        Some(now.to_string())
+    } else {
+        None
+    };
+    sqlx::query(
+        "UPDATE entries SET completed_at = ?1, updated_at = ?2 WHERE id = ?3 AND is_deleted = 0",
+    )
+    .bind(completed_at.as_deref())
+    .bind(now)
+    .bind(parent_id)
+    .execute(&mut *conn)
+    .await
+    .map_err(|e| format!("同步父任务完成状态失败：{e}"))?;
+    Ok(())
+}
+
 /// 软删除。v0.4：父任务软删除时子任务一并软删除（契约第 1 节第 5 条）。
 pub async fn delete_entry_core(pool: &SqlitePool, id: i64) -> Result<(), String> {
     let now = now_timestamp();
@@ -338,6 +410,14 @@ pub async fn delete_entry_core(pool: &SqlitePool, id: i64) -> Result<(), String>
         .begin()
         .await
         .map_err(|e| format!("数据库事务开启失败：{e}"))?;
+    // 删的是子任务时，删完要重算父任务完成态（v0.8）
+    let parent_id: Option<i64> =
+        sqlx::query_scalar("SELECT parent_id FROM entries WHERE id = ?1")
+            .bind(id)
+            .fetch_optional(&mut *tx)
+            .await
+            .map_err(|e| format!("读取记录失败：{e}"))?
+            .flatten();
     let result = sqlx::query("UPDATE entries SET is_deleted = 1, updated_at = ?1 WHERE id = ?2")
         .bind(&now)
         .bind(id)
@@ -354,6 +434,9 @@ pub async fn delete_entry_core(pool: &SqlitePool, id: i64) -> Result<(), String>
         .execute(&mut *tx)
         .await
         .map_err(|e| format!("删除子任务失败：{e}"))?;
+    if let Some(pid) = parent_id {
+        sync_parent_completion(&mut tx, pid, &now).await?;
+    }
     tx.commit()
         .await
         .map_err(|e| format!("删除记录失败：{e}"))?;

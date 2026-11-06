@@ -1,6 +1,7 @@
 import { Coffee, Pause, Play, RotateCcw, Timer, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "../components/ui/Button";
+import { TomatoCut } from "../components/TomatoCut";
 import { api, errorText } from "../lib/api";
 import { cn } from "../lib/cn";
 import type { PomodoroSession, PomodoroSummary } from "../lib/types";
@@ -28,6 +29,8 @@ export function PomodoroPage() {
   const [records, setRecords] = useState<PomodoroSession[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [lastMsg, setLastMsg] = useState<string | null>(null);
+  /** 专注自然结束时的番茄切开动画（v0.8）：每次 +1 重放 */
+  const [celebrate, setCelebrate] = useState(0);
 
   const startedAt = useRef<string | null>(null);
   const mode = MODES[modeIndex];
@@ -83,6 +86,10 @@ export function PomodoroPage() {
           ? `${kind === "focus" ? "完成一个番茄" : "休息结束"}：${Math.round(seconds / 60)} 分钟`
           : `已结束并记录：${Math.round(seconds / 60)} 分钟`,
       );
+      // v0.8：只有「专注」倒计时自然结束时，才在右下角放番茄切开的动画
+      if (kind === "focus" && completed) {
+        setCelebrate((n) => n + 1);
+      }
       useUI.getState().bumpRevision();
       await loadStats();
     } catch (err) {
@@ -144,10 +151,12 @@ export function PomodoroPage() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
+      {/* 专注结束：右下角番茄切开动画 */}
+      <TomatoCut token={celebrate} />
       <header className="flex items-center gap-2 border-b border-line px-6 py-3">
         <Timer size={16} className="text-accent" />
         <h1 className="text-[15px] font-semibold text-ink">番茄钟</h1>
-        <span className="text-[11.5px] text-ink-faint">专注 25 分钟，休息 5 分钟</span>
+        <span className="text-[11.5px] text-ink-faint">专注 {MODES[0].minutes} 分钟，休息 {MODES[1].minutes} 分钟</span>
       </header>
 
       <div className="grid min-h-0 flex-1 grid-cols-[1fr_320px] gap-4 overflow-y-auto p-5">

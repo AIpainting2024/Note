@@ -1,5 +1,6 @@
 import { Check, Clock } from "lucide-react";
 import { useMemo } from "react";
+import { isEffectivelyDone } from "../lib/entries";
 import { useTodosRange } from "../hooks/useEntries";
 import { api, errorText } from "../lib/api";
 import { cn } from "../lib/cn";
@@ -118,7 +119,7 @@ export function WeekGrid({ day, onOpenDay }: Props) {
 }
 
 function TodoChip({ entry, onClick }: { entry: Entry; onClick: () => void }) {
-  const done = Boolean(entry.completedAt);
+  const done = isEffectivelyDone(entry);
   const due = entry.dueDate ? dueLabel(entry.dueDate, entry.dueTime) : null;
 
   return (

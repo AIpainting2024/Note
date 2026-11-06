@@ -99,24 +99,23 @@ export default function QuickWindow() {
 
   return (
     <div className="flex h-full flex-col bg-panel text-ink">
-      {/* 顶部条：左边整块可拖动窗口，右边项目下拉（下拉区域不参与拖动） */}
-      <div className="flex h-9 shrink-0 items-center gap-2 border-b border-line bg-panel-2 px-2.5">
-        <div
-          data-tauri-drag-region
-          className="flex h-full flex-1 items-center gap-1.5 select-none"
-          title="拖动这里移动窗口"
-        >
+      {/* 顶部条：整条可拖动窗口（deep 让图标/文字上的点击也算拖动），
+          右侧项目下拉是 SELECT，会自己拦截点击，不会被拖动吞掉 */}
+      <div
+        data-tauri-drag-region="deep"
+        className="flex h-9 shrink-0 cursor-grab items-center gap-2 border-b border-line bg-panel-2 px-2.5 select-none active:cursor-grabbing"
+        title="按住这里拖动窗口"
+      >
+        <div className="flex h-full flex-1 items-center gap-1.5">
           <GripVertical size={13} className="text-ink-faint" />
-          <span data-tauri-drag-region className="text-[11.5px] text-ink-muted">
-            快速记录
-          </span>
+          <span className="text-[11.5px] text-ink-muted">快速记录</span>
         </div>
 
         <select
           value={projectId ?? ""}
           onChange={(e) => setProjectId(e.target.value ? Number(e.target.value) : null)}
           title="记到哪个项目"
-          className="h-6 max-w-[150px] rounded-md border border-line bg-panel px-1.5 text-[11.5px] text-ink focus:border-accent focus:outline-none"
+          className="h-6 max-w-[150px] cursor-pointer rounded-md border border-line bg-panel px-1.5 text-[11.5px] text-ink focus:border-accent focus:outline-none"
         >
           <option value="">不归项目</option>
           {options.map((project) => (
@@ -126,9 +125,7 @@ export default function QuickWindow() {
           ))}
         </select>
 
-        <span data-tauri-drag-region className="shrink-0 select-none text-[10.5px] text-ink-faint">
-          Esc 收起
-        </span>
+        <span className="shrink-0 text-[10.5px] text-ink-faint">Esc 收起</span>
       </div>
 
       <div className="min-h-0 flex-1 px-3 pt-2">

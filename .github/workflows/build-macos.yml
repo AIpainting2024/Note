@@ -13,9 +13,12 @@ on:
 jobs:
   build:
     name: macOS ${{ matrix.label }}
-    # 两种架构都跑在 macos-14（Apple Silicon）上：
-    # x64 用 Apple 通用 SDK 交叉编译即可，不必排 macos-13（Intel runner 经常排很久）。
-    runs-on: macos-14
+    # 两种架构都跑在 macOS 的 Apple Silicon runner 上：
+    # x64 用 Apple 通用 SDK 交叉编译即可，不必排 Intel runner（经常排很久）。
+    # 注意：2026-11 起 `macos-14` 标签已被 GitHub 标记为不支持
+    # （annotation: The configuration 'macos-14-arm64-us-default' is not supported），
+    # 这里用 macos-latest 跟随当前可用镜像。
+    runs-on: macos-latest
     strategy:
       fail-fast: false
       matrix:

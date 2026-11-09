@@ -136,7 +136,7 @@ pub async fn search_entries_core(
         .await
         .map_err(|e| format!("搜索失败：{e}"))?;
 
-    Ok(rows
+    let mut hits: Vec<SearchHit> = rows
         .into_iter()
         .map(|row| {
             let snippet = make_snippet(&row.entry.content, keyword);
@@ -146,7 +146,17 @@ pub async fn search_entries_core(
                 snippet,
             }
         })
-        .collect())
+        .collect();
+    // v0.9：搜索结果里已完成的也沉底，已完成内部按完成时间倒序
+    hits.sort_by(
+        |a, b| match (a.entry.completed_at.as_deref(), b.entry.completed_at.as_deref()) {
+            (None, None) => std::cmp::Ordering::Equal,
+            (None, Some(_)) => std::cmp::Ordering::Less,
+            (Some(_), None) => std::cmp::Ordering::Greater,
+            (Some(left), Some(right)) => right.cmp(left),
+        },
+    );
+    Ok(hits)
 }
 
 #[tauri::command]

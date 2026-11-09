@@ -37,16 +37,19 @@ async fn ensure_can_have_children(
     Ok(parent)
 }
 
-/// 子任务列表：含已完成，按 `sort_order, created_at` 升序。
+/// 子任务列表：含已完成。v0.9 起已完成沉底，已完成内部按完成时间倒序；
+/// 未完成子任务保持手动拖动顺序（`sort_order`）。
 pub async fn list_children_core(pool: &SqlitePool, parent_id: i64) -> Result<Vec<Entry>, String> {
     let sql = select_sql(
         "WHERE parent_id = ?1 AND is_deleted = 0 ORDER BY sort_order, created_at, id",
     );
-    sqlx::query_as::<_, Entry>(&sql)
+    let mut children = sqlx::query_as::<_, Entry>(&sql)
         .bind(parent_id)
         .fetch_all(pool)
         .await
-        .map_err(|e| format!("读取子任务失败：{e}"))
+        .map_err(|e| format!("读取子任务失败：{e}"))?;
+    crate::commands::entries::sort_completed_last(&mut children);
+    Ok(children)
 }
 
 /// 新增子任务：强制 `is_todo=1`、`day`=今天、继承父任务 `project_id`，排在最后。

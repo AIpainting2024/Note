@@ -376,6 +376,11 @@ pub async fn list_project_entries_core(
         .fetch_all(pool)
         .await
         .map_err(|e| format!("读取项目内容失败：{e}"))
+        .map(|mut entries| {
+            // v0.9：已完成沉底，且已完成内部按完成时间倒序（最近完成的在上）
+            crate::commands::entries::sort_completed_last(&mut entries);
+            entries
+        })
 }
 
 // ---------------------------------------------------------------------------

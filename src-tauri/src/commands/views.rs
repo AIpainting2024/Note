@@ -46,11 +46,14 @@ pub async fn list_inbox_entries(
         "WHERE is_deleted = 0 AND parent_id IS NULL AND project_id IS NULL \
          ORDER BY day DESC, created_at DESC, id DESC LIMIT ?1",
     );
-    sqlx::query_as::<_, Entry>(&sql)
+    let mut entries = sqlx::query_as::<_, Entry>(&sql)
         .bind(limit)
         .fetch_all(&*pool)
         .await
-        .map_err(|e| format!("读取收件箱失败：{e}"))
+        .map_err(|e| format!("读取收件箱失败：{e}"))?;
+    // v0.9：已完成沉底，已完成内部按完成时间倒序
+    crate::commands::entries::sort_completed_last(&mut entries);
+    Ok(entries)
 }
 
 #[cfg(test)]

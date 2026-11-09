@@ -76,7 +76,20 @@ where
         .map_err(|e| format!("读取记录失败：{e}"))
 }
 
-/// 某一天的顶层记录：置顶优先，其余按创建时间倒序。
+/// v0.9 统一排序规则（用户确认口径）：未完成在前、已完成在后；
+/// 已完成的按完成时间倒序（**最近完成的在上**）；置顶只在未完成内部生效。
+///
+/// 用稳定排序，所以未完成项保持调用方原本的 SQL 顺序不变。
+pub(crate) fn sort_completed_last(entries: &mut [Entry]) {
+    entries.sort_by(|a, b| match (a.completed_at.as_deref(), b.completed_at.as_deref()) {
+        (None, None) => std::cmp::Ordering::Equal,
+        (None, Some(_)) => std::cmp::Ordering::Less,
+        (Some(_), None) => std::cmp::Ordering::Greater,
+        (Some(left), Some(right)) => right.cmp(left),
+    });
+}
+
+/// 某一天的顶层记录：置顶优先，其余按创建时间倒序；已完成统一沉底（v0.9）。
 ///
 /// v0.4：子任务不进入当天记录列表（`parent_id IS NULL`），避免父子重复出现。
 pub async fn list_entries_core(pool: &SqlitePool, day: &str) -> Result<Vec<Entry>, String> {
@@ -84,11 +97,13 @@ pub async fn list_entries_core(pool: &SqlitePool, day: &str) -> Result<Vec<Entry
         "WHERE day = ?1 AND is_deleted = 0 AND parent_id IS NULL \
          ORDER BY is_pinned DESC, created_at DESC, id DESC",
     );
-    sqlx::query_as::<_, Entry>(&sql)
+    let mut entries = sqlx::query_as::<_, Entry>(&sql)
         .bind(day)
         .fetch_all(pool)
         .await
-        .map_err(|e| format!("读取 {day} 的记录失败：{e}"))
+        .map_err(|e| format!("读取 {day} 的记录失败：{e}"))?;
+    sort_completed_last(&mut entries);
+    Ok(entries)
 }
 
 /// 新建记录（v1 兼容入口：不带具体截止时间）。仅测试使用，
@@ -1175,6 +1190,38 @@ mod tests {
                 .await
                 .unwrap_err();
         assert!(err.contains("项目不存在"));
+
+        cleanup_test_pool(pool, dir).await;
+    }
+    /// v0.9：已完成沉底，已完成内部按完成时间倒序（最近完成的在上）
+    #[tokio::test]
+    async fn completed_entries_sink_to_bottom_newest_completion_first() {
+        let (pool, dir) = test_pool().await;
+        let day = crate::db::today_string();
+        let a = created(&pool, "A 未完成").await;
+        let b = created(&pool, "B 早完成").await;
+        let c = created(&pool, "C 晚完成").await;
+        let d = created(&pool, "D 未完成").await;
+
+        // 直接写完成时间，制造明确先后
+        sqlx::query("UPDATE entries SET completed_at = '2026-01-01T10:00:00' WHERE id = ?1")
+            .bind(b.id)
+            .execute(&pool)
+            .await
+            .unwrap();
+        sqlx::query("UPDATE entries SET completed_at = '2026-01-02T10:00:00' WHERE id = ?1")
+            .bind(c.id)
+            .execute(&pool)
+            .await
+            .unwrap();
+
+        let list = list_entries_core(&pool, &day).await.unwrap();
+        let ids: Vec<i64> = list.iter().map(|entry| entry.id).collect();
+        assert_eq!(
+            ids,
+            vec![d.id, a.id, c.id, b.id],
+            "未完成在前（保持原顺序），已完成在后且最近完成的在前；实际 {ids:?}"
+        );
 
         cleanup_test_pool(pool, dir).await;
     }

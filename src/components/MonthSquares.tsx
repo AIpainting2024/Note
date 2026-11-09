@@ -49,12 +49,16 @@ export function MonthSquares({ anchor, items, loading, onOpenDay, onAdd, onToggl
     list.push(entry);
     byDay.set(key, list);
   }
-  // 同一天里任务在前、记录在后，已完成的沉底
+  // 同一天里：未完成在前、已完成沉底；已完成内部按完成时间倒序（v0.9）
   for (const list of byDay.values()) {
     list.sort((a, b) => {
       const doneA = a.completedAt ? 1 : 0;
       const doneB = b.completedAt ? 1 : 0;
       if (doneA !== doneB) return doneA - doneB;
+      if (doneA === 1) {
+        const byDoneAt = (b.completedAt ?? "").localeCompare(a.completedAt ?? "");
+        if (byDoneAt !== 0) return byDoneAt;
+      }
       if (a.isTodo !== b.isTodo) return a.isTodo ? -1 : 1;
       return a.createdAt.localeCompare(b.createdAt);
     });

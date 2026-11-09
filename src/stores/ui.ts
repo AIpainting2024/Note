@@ -37,6 +37,10 @@ type UIState = {
   addProjectId: number | null;
   setAddProjectId: (id: number | null) => void;
 
+  /** 保密对话框：新建保密项目后自动弹出引导设密码/解锁（v0.10） */
+  secretDialogOpen: boolean;
+  setSecretDialogOpen: (open: boolean) => void;
+
   /** 数据变更计数器：任何写入后自增，页面据此重新拉取 */
   revision: number;
   bumpRevision: () => void;
@@ -79,6 +83,9 @@ export const useUI = create<UIState>((set) => ({
 
   addProjectId: null,
   setAddProjectId: (addProjectId) => set({ addProjectId }),
+
+  secretDialogOpen: false,
+  setSecretDialogOpen: (secretDialogOpen) => set({ secretDialogOpen }),
 
   revision: 0,
   bumpRevision: () => set((s) => ({ revision: s.revision + 1 })),

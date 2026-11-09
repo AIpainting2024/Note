@@ -22,13 +22,15 @@ pub async fn list_todos_core(pool: &SqlitePool, group: &str) -> Result<Vec<Entry
         // v0.4 契约第 5 节：顶层任务列表排序 = 置顶优先 → 手工排序 → 截止日期/时间 → 创建倒序。
         "pending" => select_sql(
             "WHERE is_todo = 1 AND is_deleted = 0 AND completed_at IS NULL AND parent_id IS NULL \
+               AND COALESCE(project_is_secret, 0) = 0 \
              ORDER BY is_pinned DESC, sort_order ASC, due_date IS NULL, due_date, \
                       due_time IS NULL, due_time, created_at DESC, id DESC",
         ),
         "dueToday" => {
             let sql = select_sql(
                 "WHERE is_todo = 1 AND is_deleted = 0 AND completed_at IS NULL \
-                   AND parent_id IS NULL AND due_date = ?1 \
+                   AND parent_id IS NULL AND COALESCE(project_is_secret, 0) = 0 \
+                   AND due_date = ?1 \
                  ORDER BY due_time IS NULL ASC, due_time ASC, created_at ASC, id ASC",
             );
             return sqlx::query_as::<_, Entry>(&sql)
@@ -40,7 +42,7 @@ pub async fn list_todos_core(pool: &SqlitePool, group: &str) -> Result<Vec<Entry
         "overdue" => {
             let sql = select_sql(
                 "WHERE is_todo = 1 AND is_deleted = 0 AND completed_at IS NULL \
-                   AND parent_id IS NULL \
+                   AND parent_id IS NULL AND COALESCE(project_is_secret, 0) = 0 \
                    AND due_date IS NOT NULL AND due_date < ?1 \
                  ORDER BY due_date ASC, due_time IS NULL ASC, due_time ASC, created_at ASC, id ASC",
             );
@@ -52,7 +54,7 @@ pub async fn list_todos_core(pool: &SqlitePool, group: &str) -> Result<Vec<Entry
         }
         "done" => select_sql(
             "WHERE is_todo = 1 AND is_deleted = 0 AND completed_at IS NOT NULL \
-               AND parent_id IS NULL \
+               AND parent_id IS NULL AND COALESCE(project_is_secret, 0) = 0 \
              ORDER BY completed_at DESC, id DESC LIMIT 200",
         ),
         other => {
@@ -72,23 +74,27 @@ pub async fn list_todos_core(pool: &SqlitePool, group: &str) -> Result<Vec<Entry
 pub async fn get_counts_core(pool: &SqlitePool, today: &str) -> Result<Counts, String> {
     let sql = "\
         SELECT \
-          (SELECT COUNT(*) FROM entries \
-             WHERE day = ?1 AND is_deleted = 0 AND parent_id IS NULL) AS today_entries, \
-          (SELECT COUNT(*) FROM entries \
-             WHERE day = ?1 AND is_todo = 1 AND is_deleted = 0 AND parent_id IS NULL) AS today_todos, \
-          (SELECT COUNT(*) FROM entries \
-             WHERE is_todo = 1 AND is_deleted = 0 AND completed_at IS NULL \
-               AND parent_id IS NULL) AS pending_todos, \
-          (SELECT COUNT(*) FROM entries \
-             WHERE is_todo = 1 AND is_deleted = 0 AND completed_at IS NULL \
-               AND parent_id IS NULL AND due_date = ?1) AS due_today_todos, \
-          (SELECT COUNT(*) FROM entries \
-             WHERE is_todo = 1 AND is_deleted = 0 AND completed_at IS NULL \
-               AND parent_id IS NULL \
-               AND due_date IS NOT NULL AND due_date < ?1) AS overdue_todos, \
-          (SELECT COUNT(*) FROM entries \
-             WHERE is_deleted = 0 AND completed_at IS NOT NULL AND parent_id IS NULL \
-               AND substr(completed_at, 1, 10) = ?1) AS done_today";
+          (SELECT COUNT(*) FROM entries e LEFT JOIN projects p ON p.id = e.project_id \
+             WHERE e.day = ?1 AND e.is_deleted = 0 AND e.parent_id IS NULL \
+               AND COALESCE(p.is_secret, 0) = 0) AS today_entries, \
+          (SELECT COUNT(*) FROM entries e LEFT JOIN projects p ON p.id = e.project_id \
+             WHERE e.day = ?1 AND e.is_todo = 1 AND e.is_deleted = 0 AND e.parent_id IS NULL \
+               AND COALESCE(p.is_secret, 0) = 0) AS today_todos, \
+          (SELECT COUNT(*) FROM entries e LEFT JOIN projects p ON p.id = e.project_id \
+             WHERE e.is_todo = 1 AND e.is_deleted = 0 AND e.completed_at IS NULL \
+               AND e.parent_id IS NULL AND COALESCE(p.is_secret, 0) = 0) AS pending_todos, \
+          (SELECT COUNT(*) FROM entries e LEFT JOIN projects p ON p.id = e.project_id \
+             WHERE e.is_todo = 1 AND e.is_deleted = 0 AND e.completed_at IS NULL \
+               AND e.parent_id IS NULL AND COALESCE(p.is_secret, 0) = 0 \
+               AND e.due_date = ?1) AS due_today_todos, \
+          (SELECT COUNT(*) FROM entries e LEFT JOIN projects p ON p.id = e.project_id \
+             WHERE e.is_todo = 1 AND e.is_deleted = 0 AND e.completed_at IS NULL \
+               AND e.parent_id IS NULL AND COALESCE(p.is_secret, 0) = 0 \
+               AND e.due_date IS NOT NULL AND e.due_date < ?1) AS overdue_todos, \
+          (SELECT COUNT(*) FROM entries e LEFT JOIN projects p ON p.id = e.project_id \
+             WHERE e.is_deleted = 0 AND e.completed_at IS NOT NULL AND e.parent_id IS NULL \
+               AND COALESCE(p.is_secret, 0) = 0 \
+               AND substr(e.completed_at, 1, 10) = ?1) AS done_today";
 
     sqlx::query_as::<_, Counts>(sql)
         .bind(today)
@@ -113,9 +119,10 @@ pub async fn get_counts(state: State<'_, AppState>) -> Result<Counts, String> {
 mod tests {
     use super::*;
     use crate::commands::entries::{
-        create_entry_core, create_entry_with_due_time_core, delete_entry_core,
+        create_entry_core, create_entry_full_core, create_entry_with_due_time_core, delete_entry_core,
         set_entry_completed_core,
     };
+    use crate::commands::projects::create_project_full_core;
     use crate::db::{cleanup_test_pool, test_pool};
 
     async fn add_todo(
@@ -280,6 +287,38 @@ mod tests {
         assert_eq!(counts.due_today_todos, 1);
         assert_eq!(counts.overdue_todos, 0);
         assert_eq!(counts.done_today, 0);
+
+        cleanup_test_pool(pool, dir).await;
+    }
+    /// v0.10：保密项目的任务永远不进待办（未解锁时更不能出现）
+    #[tokio::test]
+    async fn secret_project_tasks_never_show_in_todos() {
+        let (pool, dir) = test_pool().await;
+        let public = create_project_full_core(&pool, "公开项目", None, None, false)
+            .await
+            .unwrap();
+        let secret = create_project_full_core(&pool, "保密项目", None, None, true)
+            .await
+            .unwrap();
+        create_entry_full_core(&pool, "公开任务", true, None, None, Some(public.id))
+            .await
+            .unwrap();
+        create_entry_full_core(&pool, "保密任务", true, None, None, Some(secret.id))
+            .await
+            .unwrap();
+        // 非项目任务也要出现在待办里
+        create_entry_full_core(&pool, "收件箱任务", true, None, None, None)
+            .await
+            .unwrap();
+
+        let pending = list_todos_core(&pool, "pending").await.unwrap();
+        let contents: Vec<&str> = pending.iter().map(|entry| entry.content.as_str()).collect();
+        assert!(contents.contains(&"公开任务"), "公开项目任务应在待办：{contents:?}");
+        assert!(contents.contains(&"收件箱任务"), "非项目任务应在待办：{contents:?}");
+        assert!(!contents.contains(&"保密任务"), "保密任务不该出现在待办：{contents:?}");
+
+        let counts = get_counts_core(&pool, &crate::db::today_string()).await.unwrap();
+        assert_eq!(counts.pending_todos, 2, "统计也只算公开 + 非项目任务");
 
         cleanup_test_pool(pool, dir).await;
     }

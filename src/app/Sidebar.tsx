@@ -17,7 +17,6 @@ import {
 import { useEffect, useState } from "react";
 import { NotificationBell } from "../components/NotificationBell";
 import { ProjectDialog } from "../components/ProjectDialog";
-import { SecretDialog } from "../components/SecretDialog";
 import { SidebarProject } from "../components/SidebarProject";
 import { cn } from "../lib/cn";
 import { displayShortcut } from "../lib/shortcuts";
@@ -60,7 +59,8 @@ export function Sidebar() {
   const lockSecret = useSecret((s) => s.lock);
 
   const [creating, setCreating] = useState(false);
-  const [secretOpen, setSecretOpen] = useState(false);
+  // 保密对话框提升到 App 级，这里只负责打开它（v0.10）
+  const setSecretOpen = useUI((s) => s.setSecretDialogOpen);
   const [expanded, setExpanded] = useState<Record<number, boolean>>(loadExpanded);
 
   const searchHint = settings ? displayShortcut(settings.searchShortcut) : "Ctrl + K";
@@ -118,10 +118,10 @@ export function Sidebar() {
       <div className="px-4 pb-3 pt-4">
         <div className="flex items-center gap-2">
           <div className="flex h-6 w-6 items-center justify-center rounded-md bg-accent text-[12px] font-bold text-white">
-            W
+            青
           </div>
           <div className="leading-tight">
-            <p className="text-[13px] font-semibold text-ink">WorkNote</p>
+            <p className="text-[13px] font-semibold text-ink">青苍笔记</p>
             <p className="text-[10.5px] text-ink-faint">日常记录</p>
           </div>
         </div>
@@ -271,7 +271,6 @@ export function Sidebar() {
       </div>
 
       <ProjectDialog open={creating} onOpenChange={setCreating} />
-      <SecretDialog open={secretOpen} onOpenChange={setSecretOpen} />
     </nav>
   );
 }

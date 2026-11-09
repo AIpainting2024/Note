@@ -5,6 +5,7 @@ import { cn } from "../lib/cn";
 import { PROJECT_COLORS, PROJECT_STATUS_OPTIONS } from "../lib/projects";
 import type { Project, ProjectColor, ProjectStatus } from "../lib/types";
 import { useProjects } from "../stores/projects";
+import { useSecret } from "../stores/secret";
 import { useUI } from "../stores/ui";
 import { Button } from "./ui/Button";
 import { Input, Textarea } from "./ui/Input";
@@ -41,6 +42,14 @@ export function ProjectDialog({ open, onOpenChange, project }: Props) {
     setError(null);
   }, [open, project]);
 
+  /** 保密项目创建/改为保密后：未解锁就弹密码框，解锁后侧边栏保密区才会列出该项目 */
+  const promptSecretIfLocked = async () => {
+    await useSecret.getState().load();
+    if (!useSecret.getState().status.unlocked) {
+      useUI.getState().setSecretDialogOpen(true);
+    }
+  };
+
   const submit = async () => {
     const trimmed = name.trim();
     if (!trimmed) {
@@ -59,6 +68,8 @@ export function ProjectDialog({ open, onOpenChange, project }: Props) {
           isSecret,
         });
         onOpenChange(false);
+        // v0.10：改成保密项目时，若还没解锁，直接引导设密码/解锁
+        if (isSecret) await promptSecretIfLocked();
       } else {
         const created = await create(trimmed, {
           color,
@@ -69,6 +80,9 @@ export function ProjectDialog({ open, onOpenChange, project }: Props) {
           onOpenChange(false);
           setSelectedProject(created.id);
           setView("project");
+          // v0.10：新建保密项目后自动引导设密码/解锁，
+          // 否则保密区在锁定状态下不列项目，看起来像「没生成到保密区」
+          if (isSecret) await promptSecretIfLocked();
         } else {
           setError(useProjects.getState().error ?? "创建失败");
         }

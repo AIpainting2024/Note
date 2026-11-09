@@ -25,6 +25,10 @@ use sqlx::SqlitePool;
 pub mod models;
 
 /// 应用目录名（%APPDATA% 下）。
+///
+/// v0.10 应用改名为「青苍笔记」，但**数据目录故意保持 WorkNote 不变**，
+/// 这样老用户升级后数据、备份、附件路径全部沿用，不需要迁移。
+/// 只有显式设置 `WORKNOTE_DATA_DIR` 时才会换目录。
 pub const APP_DIR_NAME: &str = "WorkNote";
 /// 本地时间戳格式（SQLite 里存的字符串）。
 pub const TIMESTAMP_FORMAT: &str = "%Y-%m-%dT%H:%M:%S";

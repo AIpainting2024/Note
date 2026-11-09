@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { NotificationPanel } from "../components/NotificationPanel";
 import { NotificationToasts } from "../components/NotificationToasts";
 import { SearchDialog } from "../components/SearchDialog";
+import { SecretDialog } from "../components/SecretDialog";
 import { TaskDetail } from "../components/TaskDetail";
 import { TodoPanel } from "../components/TodoPanel";
 import { matchShortcut } from "../lib/shortcuts";
@@ -34,6 +35,8 @@ export default function App() {
   const rightPanelWidth = useUI((s) => s.rightPanelWidth);
   const selectedEntry = useUI((s) => s.selectedEntry);
   const setSearchOpen = useUI((s) => s.setSearchOpen);
+  const secretDialogOpen = useUI((s) => s.secretDialogOpen);
+  const setSecretDialogOpen = useUI((s) => s.setSecretDialogOpen);
   const loadSettings = useSettingsStore((s) => s.load);
   const settings = useSettingsStore((s) => s.settings);
   const revision = useUI((s) => s.revision);
@@ -161,6 +164,8 @@ export default function App() {
       <SearchDialog />
       <NotificationPanel />
       <NotificationToasts />
+      {/* 保密密码对话框提升到应用级：侧边栏「保密项目」和新建保密项目都走这里（v0.10） */}
+      <SecretDialog open={secretDialogOpen} onOpenChange={setSecretDialogOpen} />
     </div>
   );
 }

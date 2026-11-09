@@ -302,15 +302,15 @@ fn setup_macos_menu(app: &AppHandle) -> tauri::Result<()> {
 
     let app_menu = Submenu::with_items(
         app,
-        "WorkNote",
+        "青苍笔记",
         true,
         &[
-            &PredefinedMenuItem::about(app, Some("关于 WorkNote"), None::<AboutMetadata>)?,
+            &PredefinedMenuItem::about(app, Some("关于青苍笔记"), None::<AboutMetadata>)?,
             &PredefinedMenuItem::separator(app)?,
-            &PredefinedMenuItem::hide(app, Some("隐藏 WorkNote"))?,
+            &PredefinedMenuItem::hide(app, Some("隐藏青苍笔记"))?,
             &PredefinedMenuItem::hide_others(app, Some("隐藏其他"))?,
             &PredefinedMenuItem::separator(app)?,
-            &PredefinedMenuItem::quit(app, Some("退出 WorkNote"))?,
+            &PredefinedMenuItem::quit(app, Some("退出青苍笔记"))?,
         ],
     )?;
 

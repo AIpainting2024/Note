@@ -64,11 +64,16 @@ export const api = {
   listProjects: (includeArchived = true) =>
     invoke<Project[]>("list_projects", { includeArchived }),
 
-  createProject: (name: string, opts?: { color?: string | null; description?: string | null }) =>
+  createProject: (
+    name: string,
+    opts?: { color?: string | null; description?: string | null; isSecret?: boolean },
+  ) =>
     invoke<Project>("create_project", {
       name,
       color: opts?.color ?? null,
       description: opts?.description ?? null,
+      // v0.10 修复：原来漏传 isSecret，勾了「保密项目」创建出来的仍是普通项目
+      isSecret: opts?.isSecret ?? false,
     }),
 
   updateProject: (id: number, patch: ProjectPatch) =>

@@ -22,6 +22,8 @@ export function TodosPage() {
   const revision = useUI((s) => s.revision);
   const setView = useUI((s) => s.setView);
   const setSelectedDay = useUI((s) => s.setSelectedDay);
+  const selectedEntry = useUI((s) => s.selectedEntry);
+  const setSelectedEntry = useUI((s) => s.setSelectedEntry);
 
   const visible = useVisibleEntries();
   const [group, setGroup] = useState<TodoGroup>("pending");
@@ -102,12 +104,28 @@ export function TodosPage() {
             {visible(items).map((entry) => {
               const done = Boolean(entry.completedAt);
               const due = entry.dueDate ? dueLabel(entry.dueDate, entry.dueTime) : null;
+              const active = selectedEntry?.id === entry.id;
               return (
                 <div
                   key={entry.id}
-                  className="group flex items-start gap-2.5 rounded-lg border border-line bg-panel px-3.5 py-2.5"
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`查看任务详情：${entry.content}`}
+                  onClick={() => setSelectedEntry(active ? null : entry)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setSelectedEntry(active ? null : entry);
+                    }
+                  }}
+                  className={cn(
+                    "group flex cursor-pointer items-start gap-2.5 rounded-lg border px-3.5 py-2.5 text-left transition-colors",
+                    active
+                      ? "border-accent bg-accent-soft/40"
+                      : "border-line bg-panel hover:border-accent/40 hover:bg-panel-2",
+                  )}
                 >
-                  <div className="mt-[3px]">
+                  <div className="mt-[3px]" onClick={(e) => e.stopPropagation()}>
                     <Checkbox
                       checked={done}
                       ariaLabel={done ? "标记为未完成" : "标记为完成"}
@@ -146,7 +164,10 @@ export function TodosPage() {
                       )}
                       <button
                         type="button"
-                        onClick={() => openDay(entry.day)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openDay(entry.day);
+                        }}
                         className="hover:text-accent"
                       >
                         {shortDay(entry.day)} 记录
@@ -154,6 +175,9 @@ export function TodosPage() {
                       {done && entry.completedAt && (
                         <span>{entry.completedAt.slice(11, 16)} 完成</span>
                       )}
+                      <span className="ml-auto shrink-0 text-[11px] text-ink-faint opacity-0 group-hover:opacity-100">
+                        点开看详情 →
+                      </span>
                     </div>
                   </div>
                 </div>

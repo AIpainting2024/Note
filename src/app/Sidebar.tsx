@@ -19,6 +19,7 @@ import { NotificationBell } from "../components/NotificationBell";
 import { ProjectDialog } from "../components/ProjectDialog";
 import { SidebarProject } from "../components/SidebarProject";
 import { cn } from "../lib/cn";
+import { dragRegionProps } from "../lib/windowChrome";
 import { displayShortcut } from "../lib/shortcuts";
 import type { View } from "../lib/types";
 import { useProjects } from "../stores/projects";
@@ -116,7 +117,7 @@ export function Sidebar() {
 
   return (
     <nav className="flex w-[196px] shrink-0 select-none flex-col border-r border-sidebar-line bg-sidebar">
-      <div className="px-4 pb-2.5 pt-2">
+      <div {...dragRegionProps()} className="px-4 pb-2.5 pt-2">
         <div className="flex items-center gap-2">
           <img src="/logo.png" alt="青苍笔记" className="h-7 w-7 rounded-md" draggable={false} />
           <div className="leading-tight">

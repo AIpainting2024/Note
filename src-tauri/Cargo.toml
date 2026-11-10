@@ -1,6 +1,6 @@
 [package]
 name = "worknote"
-version = "0.12.0"
+version = "0.13.0"
 description = "青苍笔记 - 本地优先的每日记录与轻待办桌面应用"
 authors = ["WorkNote"]
 edition = "2024"
@@ -56,3 +56,13 @@ strip = true
 # 业务代码仍按上面的 release 配置优化。
 [profile.release.package.libsqlite3-sys]
 opt-level = 0
+
+# v0.13：无边框窗口最大化时修正 WM_GETMINMAXINFO（否则会溢出任务栏 8px）
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.62", features = [
+  "Win32_Foundation",
+  "Win32_UI_WindowsAndMessaging",
+  "Win32_UI_Shell",
+  "Win32_UI_HiDpi",
+  "Win32_Graphics_Gdi",
+] }

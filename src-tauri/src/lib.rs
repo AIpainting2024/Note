@@ -345,6 +345,62 @@ fn setup_macos_menu(app: &AppHandle) -> tauri::Result<()> {
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
+/// v0.13：主窗口 `decorations: false` 后，Windows 仍按带边框窗口计算最大化矩形，
+/// 结果窗口比工作区每边多 8px（盖住任务栏 / 内容被裁掉）。
+/// 这里用 WM_GETMINMAXINFO 子类化把最大化尺寸改成显示器工作区。
+#[cfg(windows)]
+mod undecorated_maximize {
+    use windows::Win32::Foundation::{HWND, LPARAM, LRESULT, WPARAM};
+    use windows::Win32::Graphics::Gdi::{
+        GetMonitorInfoW, MonitorFromWindow, MONITORINFO, MONITOR_DEFAULTTONEAREST,
+    };
+    use windows::Win32::UI::Shell::{DefSubclassProc, SetWindowSubclass};
+    use windows::Win32::UI::WindowsAndMessaging::{MINMAXINFO, WM_GETMINMAXINFO};
+
+    const SUBCLASS_ID: usize = 0x5759; // "WY"
+
+    unsafe extern "system" fn subclass_proc(
+        hwnd: HWND,
+        msg: u32,
+        wparam: WPARAM,
+        lparam: LPARAM,
+        _id: usize,
+        _data: usize,
+    ) -> LRESULT {
+        if msg == WM_GETMINMAXINFO && lparam.0 != 0 {
+            unsafe {
+                let info = &mut *(lparam.0 as *mut MINMAXINFO);
+                let monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+                let mut mi = MONITORINFO {
+                    cbSize: std::mem::size_of::<MONITORINFO>() as u32,
+                    ..Default::default()
+                };
+                if GetMonitorInfoW(monitor, &mut mi).as_bool() {
+                    let work = mi.rcWork;
+                    let full = mi.rcMonitor;
+                    // 无边框窗口：把最大化矩形直接对齐到显示器工作区（去掉任务栏）
+                    info.ptMaxPosition.x = work.left - full.left;
+                    info.ptMaxPosition.y = work.top - full.top;
+                    info.ptMaxSize.x = work.right - work.left;
+                    info.ptMaxSize.y = work.bottom - work.top;
+                    return LRESULT(0);
+                }
+            }
+        }
+        unsafe { DefSubclassProc(hwnd, msg, wparam, lparam) }
+    }
+
+    /// 给窗口装上子类化回调；失败只打日志，不影响启动。
+    pub fn install(window: &tauri::WebviewWindow) {
+        match window.hwnd() {
+            Ok(hwnd) => unsafe {
+                let _ = SetWindowSubclass(hwnd, Some(subclass_proc), SUBCLASS_ID, 0);
+            },
+            Err(err) => eprintln!("[WorkNote] 取窗口句柄失败，跳过最大化修正：{err}"),
+        }
+    }
+}
+
 pub fn run() {
     tauri::Builder::default()
         // 单实例守卫必须第一个注册：第二次启动改为唤起已有窗口，而不是再开一个进程。
@@ -389,6 +445,12 @@ pub fn run() {
                 if let Err(err) = register_shortcut(app.handle(), kind, &accelerator) {
                     eprintln!("[WorkNote] 启动时注册{}失败：{err}", kind.label());
                 }
+            }
+
+            // v0.13：无边框窗口的最大化边界修正（仅 Windows）
+            #[cfg(windows)]
+            if let Some(window) = app.get_webview_window(MAIN_WINDOW_LABEL) {
+                undecorated_maximize::install(&window);
             }
 
             // 系统托盘：常驻入口。失败只打日志——托盘没起来不能连带应用起不来。

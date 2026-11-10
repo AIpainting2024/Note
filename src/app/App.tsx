@@ -22,6 +22,7 @@ import { useProjects } from "../stores/projects";
 import { useSettingsStore } from "../stores/settings";
 import { useUI } from "../stores/ui";
 import { Sidebar } from "./Sidebar";
+import { WindowControls } from "./WindowControls";
 
 function applyTheme(theme: Theme) {
   const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
@@ -128,6 +129,8 @@ export default function App() {
 
   return (
     <div className="flex h-full bg-canvas text-ink">
+      {/* v0.13：无原生标题栏，窗口按钮自绘 */}
+      <WindowControls />
       <Sidebar />
 
       <main className="flex min-w-0 flex-1 flex-col">
@@ -168,7 +171,7 @@ export default function App() {
           />
           <aside
             style={{ width: rightPanelWidth }}
-            className="shrink-0 border-l border-line bg-panel-2"
+            className="shrink-0 border-l border-line bg-panel-2 pt-8"
           >
             {selectedEntry ? <TaskDetail /> : <TodoPanel />}
           </aside>

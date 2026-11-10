@@ -6,6 +6,7 @@ import { PomodoroDoneOverlay } from "../components/PomodoroDoneOverlay";
 import { api, errorText } from "../lib/api";
 import { cn } from "../lib/cn";
 import type { PomodoroSession, PomodoroSummary } from "../lib/types";
+import { dragRegionProps } from "../lib/windowChrome";
 import { useSettingsStore } from "../stores/settings";
 import { useUI } from "../stores/ui";
 
@@ -210,7 +211,10 @@ export function PomodoroPage() {
           </div>
         </div>
       </Modal>
-      <header className="flex items-center gap-2 border-b border-line px-6 py-3">
+      <header
+        {...dragRegionProps()}
+        className="flex items-center gap-2 border-b border-line pl-6 pr-[130px] py-3"
+      >
         <Timer size={16} className="text-accent" />
         <h1 className="text-[15px] font-semibold text-ink">番茄钟</h1>
         <span className="text-[11.5px] text-ink-faint">专注 {MODES[0].minutes} 分钟，休息 {MODES[1].minutes} 分钟</span>

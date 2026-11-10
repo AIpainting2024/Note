@@ -435,7 +435,7 @@ export function SettingsPage() {
           </Section>
 
           <Section title="关于" icon={<Monitor size={14} />}>
-            <p className="text-[12.5px] text-ink-muted">青苍笔记 0.11.1 · 本地 SQLite 存储，不联网。</p>
+            <p className="text-[12.5px] text-ink-muted">青苍笔记 0.11.2 · 本地 SQLite 存储，不联网。</p>
           </Section>
         </div>
       </div>

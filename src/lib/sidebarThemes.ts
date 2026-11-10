@@ -12,7 +12,9 @@ export type SidebarThemeKey =
   | "moon"
   | "indigo"
   | "lotus"
-  | "tea";
+  | "tea"
+  | "sky"
+  | "ash";
 
 type Palette = {
   /** 侧边栏底色 */
@@ -78,18 +80,18 @@ export const SIDEBAR_THEMES: SidebarTheme[] = [
   },
   {
     key: "bamboo",
-    label: "竹青",
-    swatch: "#4e6b52",
+    label: "竹叶青",
+    swatch: "#3f6146",
     light: {
-      sidebar: "#3f5b45",
-      sidebarLine: "#4e6b52",
-      sidebarInk: "#edf2ec",
-      sidebarInkMuted: "#c3d2c4",
-      sidebarInkFaint: "#9db0a0",
-      sidebarHover: "#4a6a51",
-      canvas: "#f3f6f1",
+      sidebar: "#3f6146",
+      sidebarLine: "#4d7355",
+      sidebarInk: "#eef4ed",
+      sidebarInkMuted: "#c6d6c4",
+      sidebarInkFaint: "#9fb3a0",
+      sidebarHover: "#4a7053",
+      canvas: "#f2f7f1",
       panel: "#ffffff",
-      panel2: "#f7faf6",
+      panel2: "#f6faf5",
     },
     dark: {
       sidebar: "#26362b",
@@ -105,18 +107,18 @@ export const SIDEBAR_THEMES: SidebarTheme[] = [
   },
   {
     key: "paper",
-    label: "宣纸",
-    swatch: "#d9cbaa",
+    label: "宣纸黄",
+    swatch: "#eadfc6",
     light: {
-      sidebar: "#e4d8bd",
-      sidebarLine: "#d3c4a2",
+      sidebar: "#f0e7d2",
+      sidebarLine: "#ded2b8",
       sidebarInk: "#3b3327",
       sidebarInkMuted: "#6b5f49",
-      sidebarInkFaint: "#8a7c63",
-      sidebarHover: "#efe5cf",
-      canvas: "#faf6ec",
-      panel: "#fffdf7",
-      panel2: "#f8f3e7",
+      sidebarInkFaint: "#8f8168",
+      sidebarHover: "#f8f1e1",
+      canvas: "#fcf9f1",
+      panel: "#fffefb",
+      panel2: "#faf6ea",
     },
     dark: {
       sidebar: "#3a332a",
@@ -236,6 +238,60 @@ export const SIDEBAR_THEMES: SidebarTheme[] = [
       canvas: "#171310",
       panel: "#1e1915",
       panel2: "#231d18",
+    },
+  },
+  {
+    key: "sky",
+    label: "天空蓝",
+    swatch: "#3c7fa6",
+    light: {
+      sidebar: "#3c7fa6",
+      sidebarLine: "#4e91b8",
+      sidebarInk: "#eaf4fa",
+      sidebarInkMuted: "#c2ddec",
+      sidebarInkFaint: "#9dc2d6",
+      sidebarHover: "#4a8db4",
+      canvas: "#f1f8fc",
+      panel: "#ffffff",
+      panel2: "#f5fafd",
+    },
+    dark: {
+      sidebar: "#26485c",
+      sidebarLine: "#31596f",
+      sidebarInk: "#e2eff6",
+      sidebarInkMuted: "#a8c6d6",
+      sidebarInkFaint: "#7e9cad",
+      sidebarHover: "#2d5468",
+      canvas: "#111a20",
+      panel: "#172128",
+      panel2: "#1b262e",
+    },
+  },
+  {
+    key: "ash",
+    label: "瓦灰色",
+    swatch: "#5a5c5e",
+    light: {
+      sidebar: "#5a5c5e",
+      sidebarLine: "#6a6c6e",
+      sidebarInk: "#f0f0ef",
+      sidebarInkMuted: "#cbccc9",
+      sidebarInkFaint: "#a5a6a2",
+      sidebarHover: "#67696b",
+      canvas: "#f5f5f3",
+      panel: "#ffffff",
+      panel2: "#f8f8f6",
+    },
+    dark: {
+      sidebar: "#333537",
+      sidebarLine: "#424446",
+      sidebarInk: "#e9e9e7",
+      sidebarInkMuted: "#b4b5b2",
+      sidebarInkFaint: "#888a86",
+      sidebarHover: "#3d3f41",
+      canvas: "#141515",
+      panel: "#1a1b1b",
+      panel2: "#1e1f1f",
     },
   },
 ];

@@ -180,6 +180,8 @@ pub struct Notification {
 pub const DEFAULT_THEME: &str = "system";
 /// 侧边栏配色（v0.11）：default / bamboo(竹青) / paper(宣纸) / moon(月白) / indigo(黛蓝) / lotus(藕荷) / tea(茶褐)
 pub const DEFAULT_SIDEBAR_THEME: &str = "default";
+/// 番茄钟结束提示方式（v0.12）：dialog / animation / badge
+pub const DEFAULT_POMODORO_ALERT: &str = "dialog";
 pub const DEFAULT_AUTO_BACKUP: bool = true;
 pub const DEFAULT_AUTO_BACKUP_KEEP: i64 = 14;
 /// 全局快速记录快捷键（v0.3 起 = capture）。
@@ -199,6 +201,10 @@ fn default_theme() -> String {
 
 fn default_sidebar_theme() -> String {
     DEFAULT_SIDEBAR_THEME.to_string()
+}
+
+fn default_pomodoro_alert() -> String {
+    DEFAULT_POMODORO_ALERT.to_string()
 }
 
 fn default_auto_backup() -> bool {
@@ -242,6 +248,9 @@ pub struct Settings {
     /// v0.11 侧边栏配色方案
     #[serde(default = "default_sidebar_theme")]
     pub sidebar_theme: String,
+    /// v0.12 番茄钟结束提示：dialog / animation / badge
+    #[serde(default = "default_pomodoro_alert")]
+    pub pomodoro_alert: String,
     #[serde(default = "default_auto_backup")]
     pub auto_backup: bool,
     #[serde(default = "default_auto_backup_keep")]

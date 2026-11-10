@@ -1,17 +1,5 @@
 import { open as openDialog, save as saveDialog } from "@tauri-apps/plugin-dialog";
-import {
-  BellRing,
-  Database,
-  Download,
-  FolderOpen,
-  HardDriveDownload,
-  Keyboard,
-  Monitor,
-  Moon,
-  RotateCcw,
-  Sun,
-  VolumeX,
-} from "lucide-react";
+import { BellRing, CircleDot, Database, Download, FolderOpen, HardDriveDownload, Keyboard, Monitor, Moon, RotateCcw, Sparkles, Sun, Timer, VolumeX } from "lucide-react";
 import { useEffect, useState } from "react";
 import { PageHeader } from "../components/PageHeader";
 import { Button } from "../components/ui/Button";
@@ -21,12 +9,22 @@ import { cn } from "../lib/cn";
 import { todayStr } from "../lib/dates";
 import { displayShortcut, validateShortcut } from "../lib/shortcuts";
 import { SIDEBAR_THEMES } from "../lib/sidebarThemes";
-import type { BackupInfo, Theme } from "../lib/types";
+import type { BackupInfo, PomodoroAlert, Theme } from "../lib/types";
 import { useNotifications } from "../stores/notifications";
 import { useSettingsStore } from "../stores/settings";
 import { useUI } from "../stores/ui";
 
 type Notice = { tone: "ok" | "error"; text: string } | null;
+
+const POMODORO_ALERTS: {
+  key: PomodoroAlert;
+  label: string;
+  icon: typeof Sun;
+}[] = [
+  { key: "dialog", label: "弹窗", icon: BellRing },
+  { key: "animation", label: "动画", icon: Sparkles },
+  { key: "badge", label: "红点", icon: CircleDot },
+];
 
 const THEMES: { key: Theme; label: string; icon: typeof Sun }[] = [
   { key: "light", label: "浅色", icon: Sun },
@@ -309,6 +307,31 @@ export function SettingsPage() {
             </p>
           </Section>
 
+          <Section title="番茄钟" icon={<Timer size={14} />}>
+            <p className="mb-1.5 text-[12px] text-ink-muted">倒计时结束时的提示方式</p>
+            <div className="flex flex-wrap gap-1.5">
+              {POMODORO_ALERTS.map((item) => (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => void save({ pomodoroAlert: item.key })}
+                  className={cn(
+                    "flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-[12.5px]",
+                    settings.pomodoroAlert === item.key
+                      ? "border-accent bg-accent-soft font-medium text-accent"
+                      : "border-line text-ink-muted hover:text-ink",
+                  )}
+                >
+                  <item.icon size={13} />
+                  {item.label}
+                </button>
+              ))}
+            </div>
+            <p className="mt-1.5 text-[11px] text-ink-faint">
+              弹窗＝结束时弹一个确认框；动画＝整屏番茄切开动画；红点＝侧边栏「番茄钟」出现小红点，点进去消失。
+            </p>
+          </Section>
+
           <Section title="外观" icon={<Sun size={14} />}>
             <div className="flex gap-1.5">
               {THEMES.map(({ key, label, icon: Icon }) => (
@@ -435,7 +458,7 @@ export function SettingsPage() {
           </Section>
 
           <Section title="关于" icon={<Monitor size={14} />}>
-            <p className="text-[12.5px] text-ink-muted">青苍笔记 0.11.3 · 本地 SQLite 存储，不联网。</p>
+            <p className="text-[12.5px] text-ink-muted">青苍笔记 0.12.0 · 本地 SQLite 存储，不联网。</p>
           </Section>
         </div>
       </div>

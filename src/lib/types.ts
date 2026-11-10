@@ -83,10 +83,14 @@ export type ProjectPatch = {
   isSecret?: boolean;
 };
 
+export type PomodoroAlert = "dialog" | "animation" | "badge";
+
 export type Settings = {
   theme: Theme;
-  /** v0.11 侧边栏配色：default / bamboo / paper / moon / indigo / lotus / tea */
+  /** v0.11 侧边栏配色：default / bamboo / paper / moon / indigo / lotus / tea / sky / ash */
   sidebarTheme: string;
+  /** v0.12 番茄钟结束提示：dialog 弹窗 / animation 动画 / badge 红点 */
+  pomodoroAlert: PomodoroAlert;
   autoBackup: boolean;
   autoBackupKeep: number;
   globalShortcut: string;

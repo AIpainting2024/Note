@@ -1,11 +1,19 @@
 import { Coffee, Pause, Play, RotateCcw, Timer, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "../components/ui/Button";
-import { TomatoCut } from "../components/TomatoCut";
+import { Modal } from "../components/ui/Modal";
+import { PomodoroDoneOverlay } from "../components/PomodoroDoneOverlay";
 import { api, errorText } from "../lib/api";
 import { cn } from "../lib/cn";
 import type { PomodoroSession, PomodoroSummary } from "../lib/types";
+import { useSettingsStore } from "../stores/settings";
 import { useUI } from "../stores/ui";
+
+const ALERT_LABELS: Record<string, string> = {
+  dialog: "弹窗",
+  animation: "动画",
+  badge: "红点",
+};
 
 const MODES = [
   { kind: "focus", label: "专注", minutes: 25 },
@@ -29,8 +37,12 @@ export function PomodoroPage() {
   const [records, setRecords] = useState<PomodoroSession[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [lastMsg, setLastMsg] = useState<string | null>(null);
-  /** 专注自然结束时的番茄切开动画（v0.8）：每次 +1 重放 */
+  /** 结束动画 token：每次 +1 重放（v0.12） */
   const [celebrate, setCelebrate] = useState(0);
+  /** 弹窗提示（v0.12） */
+  const [alertOpen, setAlertOpen] = useState(false);
+  const [alertText, setAlertText] = useState("");
+  const alertMode = useSettingsStore((s) => s.settings?.pomodoroAlert ?? "dialog");
 
   const startedAt = useRef<string | null>(null);
   const mode = MODES[modeIndex];
@@ -49,6 +61,11 @@ export function PomodoroPage() {
   useEffect(() => {
     void loadStats();
   }, [loadStats, revision]);
+
+  // v0.12：进页面即清掉侧边栏红点
+  useEffect(() => {
+    useUI.getState().setPomodoroDone(false);
+  }, []);
 
   // 计时
   useEffect(() => {
@@ -86,9 +103,18 @@ export function PomodoroPage() {
           ? `${kind === "focus" ? "完成一个番茄" : "休息结束"}：${Math.round(seconds / 60)} 分钟`
           : `已结束并记录：${Math.round(seconds / 60)} 分钟`,
       );
-      // v0.8：只有「专注」倒计时自然结束时，才在右下角放番茄切开的动画
-      if (kind === "focus" && completed) {
-        setCelebrate((n) => n + 1);
+      // v0.12：结束提示三选一 —— 弹窗 / 动画 / 红点
+      if (completed) {
+        const mode = useSettingsStore.getState().settings?.pomodoroAlert ?? "dialog";
+        const tip = kind === "focus" ? "专注完成，休息一下" : "休息结束，继续专注吧";
+        if (mode === "dialog") {
+          setAlertText(tip);
+          setAlertOpen(true);
+        } else if (mode === "animation") {
+          setCelebrate((n) => n + 1);
+        } else {
+          useUI.getState().setPomodoroDone(true);
+        }
       }
       useUI.getState().bumpRevision();
       await loadStats();
@@ -151,12 +177,46 @@ export function PomodoroPage() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      {/* 专注结束：右下角番茄切开动画 */}
-      <TomatoCut token={celebrate} />
+      {/* 结束提示：整屏番茄切开动画（设置里选「动画」时） */}
+      <PomodoroDoneOverlay token={celebrate} text={alertText || "番茄完成，休息一下"} />
+
+      {/* 结束提示：弹窗（设置里选「弹窗」时） */}
+      <Modal
+        open={alertOpen}
+        onOpenChange={setAlertOpen}
+        title="番茄钟"
+        className="w-[340px]"
+      >
+        <div className="p-5 text-center">
+          <p className="text-[15px] font-semibold text-ink">{alertText}</p>
+          <p className="mt-1 text-[12px] text-ink-faint">
+            {mode.kind === "focus" ? `已记录 ${Math.round(total / 60)} 分钟专注` : "休息结束了"}
+          </p>
+          <div className="mt-4 flex justify-center gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setAlertOpen(false)}>
+              知道了
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => {
+                setAlertOpen(false);
+                pickMode(mode.kind === "focus" ? 1 : 0);
+                start();
+              }}
+            >
+              {mode.kind === "focus" ? "开始休息" : "开始专注"}
+            </Button>
+          </div>
+        </div>
+      </Modal>
       <header className="flex items-center gap-2 border-b border-line px-6 py-3">
         <Timer size={16} className="text-accent" />
         <h1 className="text-[15px] font-semibold text-ink">番茄钟</h1>
         <span className="text-[11.5px] text-ink-faint">专注 {MODES[0].minutes} 分钟，休息 {MODES[1].minutes} 分钟</span>
+        <span className="ml-auto rounded-full bg-panel-2 px-2 py-0.5 text-[11px] text-ink-faint">
+          结束提示：{ALERT_LABELS[alertMode] ?? "弹窗"}
+        </span>
       </header>
 
       <div className="grid min-h-0 flex-1 grid-cols-[1fr_320px] gap-4 overflow-y-auto p-5">

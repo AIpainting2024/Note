@@ -48,6 +48,7 @@ function loadExpanded(): Record<number, boolean> {
 
 export function Sidebar() {
   const view = useUI((s) => s.view);
+  const pomodoroDone = useUI((s) => s.pomodoroDone);
   const setView = useUI((s) => s.setView);
   const setSearchOpen = useUI((s) => s.setSearchOpen);
   const selectedProjectId = useUI((s) => s.selectedProjectId);
@@ -115,7 +116,7 @@ export function Sidebar() {
 
   return (
     <nav className="flex w-[196px] shrink-0 select-none flex-col border-r border-sidebar-line bg-sidebar">
-      <div className="px-4 pb-3 pt-4">
+      <div className="px-4 pb-2.5 pt-2">
         <div className="flex items-center gap-2">
           <img src="/logo.png" alt="青苍笔记" className="h-7 w-7 rounded-md" draggable={false} />
           <div className="leading-tight">
@@ -150,6 +151,12 @@ export function Sidebar() {
           >
             <Icon size={15} />
             {label}
+            {item === "pomodoro" && pomodoroDone && (
+              <span
+                aria-label="番茄钟有未查看的完成提示"
+                className="ml-auto h-1.5 w-1.5 rounded-full bg-danger"
+              />
+            )}
           </button>
         ))}
       </div>

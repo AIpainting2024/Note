@@ -13,17 +13,19 @@ use tauri::State;
 use crate::db::models::{
     Settings, DEFAULT_AUTO_BACKUP_KEEP, DEFAULT_DAILY_DIGEST_ENABLED, DEFAULT_DAILY_DIGEST_TIME,
     DEFAULT_GLOBAL_SHORTCUT, DEFAULT_MAIN_SHORTCUT, DEFAULT_REMIND_BEFORE_MINUTES,
-    DEFAULT_SEARCH_SHORTCUT, DEFAULT_SIDEBAR_THEME, DEFAULT_THEME,
+    DEFAULT_POMODORO_ALERT, DEFAULT_SEARCH_SHORTCUT, DEFAULT_SIDEBAR_THEME, DEFAULT_THEME,
 };
 use crate::db::{load_settings_map, parse_time, parse_timestamp, set_setting, tomorrow_midnight};
 use crate::AppState;
 
 /// 允许的主题值。
 pub const THEMES: [&str; 3] = ["light", "dark", "system"];
-/// 允许的侧边栏配色（v0.11）。
-pub const SIDEBAR_THEMES: [&str; 7] = [
-    "default", "bamboo", "paper", "moon", "indigo", "lotus", "tea",
+/// 允许的侧边栏配色（v0.12：新增天空蓝 sky / 瓦灰 ash）。
+pub const SIDEBAR_THEMES: [&str; 9] = [
+    "default", "bamboo", "paper", "moon", "indigo", "lotus", "tea", "sky", "ash",
 ];
+/// 允许的番茄钟结束提示方式（v0.12）。
+pub const POMODORO_ALERTS: [&str; 3] = ["dialog", "animation", "badge"];
 /// 自动备份保留份数的上限，防止用户误填天文数字。
 pub const MAX_BACKUP_KEEP: i64 = 365;
 /// `remindBeforeMinutes` 的合法取值；0 = 关闭截止前提醒。
@@ -50,6 +52,11 @@ pub async fn load_settings(pool: &SqlitePool, data_dir: &Path) -> Result<Setting
         .map(|v| v.trim().to_string())
         .filter(|v| SIDEBAR_THEMES.contains(&v.as_str()))
         .unwrap_or_else(|| DEFAULT_SIDEBAR_THEME.to_string());
+    let pomodoro_alert = map
+        .get("pomodoro_alert")
+        .map(|v| v.trim().to_string())
+        .filter(|v| POMODORO_ALERTS.contains(&v.as_str()))
+        .unwrap_or_else(|| DEFAULT_POMODORO_ALERT.to_string());
     let auto_backup = map_bool(&map, "auto_backup", crate::db::models::DEFAULT_AUTO_BACKUP);
     let auto_backup_keep = map
         .get("auto_backup_keep")
@@ -87,6 +94,7 @@ pub async fn load_settings(pool: &SqlitePool, data_dir: &Path) -> Result<Setting
     Ok(Settings {
         theme,
         sidebar_theme,
+        pomodoro_alert,
         auto_backup,
         auto_backup_keep,
         global_shortcut,
@@ -116,6 +124,13 @@ pub async fn save_settings_core(
         return Err(format!(
             "侧边栏配色无效：{sidebar_theme}（可选 {}）",
             SIDEBAR_THEMES.join(" / ")
+        ));
+    }
+    let pomodoro_alert = settings.pomodoro_alert.trim().to_string();
+    if !POMODORO_ALERTS.contains(&pomodoro_alert.as_str()) {
+        return Err(format!(
+            "番茄钟提示方式无效：{pomodoro_alert}（可选 {}）",
+            POMODORO_ALERTS.join(" / ")
         ));
     }
     let auto_backup_keep = settings.auto_backup_keep.clamp(1, MAX_BACKUP_KEEP);
@@ -153,9 +168,10 @@ pub async fn save_settings_core(
         return Err(format!("静音截止时间格式无效：{value}"));
     }
 
-    let pairs: [(&str, String); 10] = [
+    let pairs: [(&str, String); 11] = [
         ("theme", theme),
         ("sidebar_theme", sidebar_theme),
+        ("pomodoro_alert", pomodoro_alert),
         ("auto_backup", if settings.auto_backup { "true" } else { "false" }.to_string()),
         ("auto_backup_keep", auto_backup_keep.to_string()),
         ("global_shortcut", global_shortcut),
@@ -251,6 +267,7 @@ mod tests {
         Settings {
             theme: "dark".into(),
             sidebar_theme: "bamboo".into(),
+            pomodoro_alert: "animation".into(),
             auto_backup: false,
             auto_backup_keep: 30,
             global_shortcut: "CommandOrControl+Alt+W".into(),

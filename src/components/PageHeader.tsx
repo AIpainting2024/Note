@@ -15,7 +15,7 @@ export function PageHeader({ title, subtitle, actions, showPanelToggle = true }:
   const toggle = useUI((s) => s.toggleRightPanel);
 
   return (
-    <header className="flex items-end justify-between gap-4 px-6 pb-3 pt-5">
+    <header className="flex items-end justify-between gap-4 px-6 pb-2.5 pt-2.5">
       <div className="min-w-0">
         <h1 className="truncate text-[17px] font-semibold tracking-tight text-ink">{title}</h1>
         {subtitle && <div className="mt-0.5 text-[12px] text-ink-faint">{subtitle}</div>}

@@ -40,6 +40,9 @@ type UIState = {
   /** 保密对话框：新建保密项目后自动弹出引导设密码/解锁（v0.10） */
   secretDialogOpen: boolean;
   setSecretDialogOpen: (open: boolean) => void;
+  /** v0.12：番茄钟结束未查看的红点提示 */
+  pomodoroDone: boolean;
+  setPomodoroDone: (done: boolean) => void;
 
   /** 数据变更计数器：任何写入后自增，页面据此重新拉取 */
   revision: number;
@@ -86,6 +89,9 @@ export const useUI = create<UIState>((set) => ({
 
   secretDialogOpen: false,
   setSecretDialogOpen: (secretDialogOpen) => set({ secretDialogOpen }),
+
+  pomodoroDone: false,
+  setPomodoroDone: (pomodoroDone) => set({ pomodoroDone }),
 
   revision: 0,
   bumpRevision: () => set((s) => ({ revision: s.revision + 1 })),

@@ -7,6 +7,7 @@ import { api, errorText } from "../lib/api";
 import { shortDay } from "../lib/dates";
 import type { Entry } from "../lib/types";
 import { useVisibleEntries } from "../lib/visibility";
+import { useProjects } from "../stores/projects";
 import { useUI } from "../stores/ui";
 
 /** 日常便签色（浅底深字，深浅色模式下都像真的便签纸） */
@@ -32,6 +33,8 @@ function colorFor(id: number) {
 export function NotesPage() {
   const revision = useUI((s) => s.revision);
   const visible = useVisibleEntries();
+  const projects = useProjects((s) => s.items);
+  const publicProjects = projects.filter((p) => !p.isSecret);
   const [items, setItems] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -90,6 +93,21 @@ export function NotesPage() {
     setSaving(true);
     try {
       await api.updateEntry(editing.id, { content });
+      setEditing(null);
+      useUI.getState().bumpRevision();
+    } catch (err) {
+      setError(errorText(err));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  /** v0.12：把便签归到项目（归属后它就不再属于「便签贴」，会出现在该项目里） */
+  const assignProject = async (projectId: number) => {
+    if (!editing) return;
+    setSaving(true);
+    try {
+      await api.updateEntry(editing.id, { projectId });
       setEditing(null);
       useUI.getState().bumpRevision();
     } catch (err) {
@@ -201,6 +219,27 @@ export function NotesPage() {
             className="w-full resize-none rounded-lg border border-line bg-panel px-3 py-2 text-[13px] leading-relaxed text-ink focus:border-accent/60 focus:outline-none"
           />
           <p className="mt-1 text-[11px] text-ink-faint">Ctrl+Enter 保存</p>
+
+          {/* v0.12：便签可以归到项目 */}
+          <div className="mt-3 flex items-center gap-2">
+            <span className="shrink-0 text-[11.5px] text-ink-muted">归到项目</span>
+            <select
+              value=""
+              disabled={saving}
+              onChange={(e) => {
+                const value = Number(e.target.value);
+                if (value) void assignProject(value);
+              }}
+              className="h-8 flex-1 rounded-md border border-line bg-panel px-2 text-[12.5px] text-ink focus:border-accent/60 focus:outline-none"
+            >
+              <option value="">选择项目…（归属后会从便签贴移走）</option>
+              {publicProjects.map((project) => (
+                <option key={project.id} value={project.id}>
+                  {project.name}
+                </option>
+              ))}
+            </select>
+          </div>
           <div className="mt-4 flex items-center justify-between">
             <Button variant="ghost" size="sm" onClick={() => void remove()}>
               删除

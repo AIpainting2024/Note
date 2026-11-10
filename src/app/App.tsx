@@ -7,9 +7,10 @@ import { SecretDialog } from "../components/SecretDialog";
 import { TaskDetail } from "../components/TaskDetail";
 import { TodoPanel } from "../components/TodoPanel";
 import { matchShortcut } from "../lib/shortcuts";
+import { applySidebarTheme } from "../lib/sidebarThemes";
 import type { Notification, Theme } from "../lib/types";
 import { CalendarPage } from "../pages/CalendarPage";
-import { InboxPage } from "../pages/InboxPage";
+import { NotesPage } from "../pages/NotesPage";
 import { PomodoroPage } from "../pages/PomodoroPage";
 import { ProjectPage } from "../pages/ProjectPage";
 import { QuadrantPage } from "../pages/QuadrantPage";
@@ -67,6 +68,19 @@ export default function App() {
     return () => mq.removeEventListener("change", onChange);
   }, [theme]);
 
+  // 侧边栏配色：跟随设置 + 浅/深模式（v0.11）
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const paint = () => {
+      const dark =
+        theme === "dark" || (theme === "system" && media.matches);
+      applySidebarTheme(settings?.sidebarTheme, dark);
+    };
+    paint();
+    media.addEventListener("change", paint);
+    return () => media.removeEventListener("change", paint);
+  }, [theme, settings?.sidebarTheme]);
+
   // 后端事件：记录变化 / 新通知
   useEffect(() => {
     if (!("__TAURI_INTERNALS__" in window)) return;
@@ -120,14 +134,14 @@ export default function App() {
         {view === "today" && <TodayPage />}
         {view === "calendar" && <CalendarPage />}
         {view === "todos" && <TodosPage />}
-        {view === "inbox" && <InboxPage />}
+        {view === "inbox" && <NotesPage />}
         {view === "quadrant" && <QuadrantPage />}
         {view === "pomodoro" && <PomodoroPage />}
         {view === "project" && <ProjectPage />}
         {view === "settings" && <SettingsPage />}
       </main>
 
-      {rightPanel && view !== "settings" && view !== "quadrant" && view !== "pomodoro" && (
+      {rightPanel && view !== "settings" && view !== "quadrant" && view !== "pomodoro" && view !== "inbox" && (
         <>
           {/* 拖动改变右侧面板宽度（需求 2） */}
           <div

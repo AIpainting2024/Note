@@ -20,6 +20,7 @@ import { api, errorText } from "../lib/api";
 import { cn } from "../lib/cn";
 import { todayStr } from "../lib/dates";
 import { displayShortcut, validateShortcut } from "../lib/shortcuts";
+import { SIDEBAR_THEMES } from "../lib/sidebarThemes";
 import type { BackupInfo, Theme } from "../lib/types";
 import { useNotifications } from "../stores/notifications";
 import { useSettingsStore } from "../stores/settings";
@@ -330,6 +331,35 @@ export function SettingsPage() {
                 </button>
               ))}
             </div>
+
+            {/* v0.11 侧边栏配色：侧栏深、内容区同色系浅 */}
+            <div className="mt-4">
+              <p className="mb-1.5 text-[12px] text-ink-muted">侧边栏配色</p>
+              <div className="flex flex-wrap gap-2">
+                {SIDEBAR_THEMES.map((item) => (
+                  <button
+                    key={item.key}
+                    type="button"
+                    onClick={() => void save({ sidebarTheme: item.key })}
+                    className={cn(
+                      "flex items-center gap-2 rounded-md border px-2 py-1.5 text-[12px]",
+                      settings.sidebarTheme === item.key
+                        ? "border-accent bg-accent-soft font-medium text-accent"
+                        : "border-line text-ink-muted hover:text-ink",
+                    )}
+                  >
+                    <span
+                      className="h-4 w-4 rounded-full border border-black/10"
+                      style={{ background: item.swatch }}
+                    />
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+              <p className="mt-1.5 text-[11px] text-ink-faint">
+                左侧边栏用较深的颜色，右侧内容区自动配同色系的浅色。
+              </p>
+            </div>
           </Section>
 
           <Section title="数据位置" icon={<Database size={14} />}>
@@ -405,7 +435,7 @@ export function SettingsPage() {
           </Section>
 
           <Section title="关于" icon={<Monitor size={14} />}>
-            <p className="text-[12.5px] text-ink-muted">青苍笔记 0.10.0 · 本地 SQLite 存储，不联网。</p>
+            <p className="text-[12.5px] text-ink-muted">青苍笔记 0.11.0 · 本地 SQLite 存储，不联网。</p>
           </Section>
         </div>
       </div>

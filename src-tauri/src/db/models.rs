@@ -178,6 +178,8 @@ pub struct Notification {
 }
 
 pub const DEFAULT_THEME: &str = "system";
+/// 侧边栏配色（v0.11）：default / bamboo(竹青) / paper(宣纸) / moon(月白) / indigo(黛蓝) / lotus(藕荷) / tea(茶褐)
+pub const DEFAULT_SIDEBAR_THEME: &str = "default";
 pub const DEFAULT_AUTO_BACKUP: bool = true;
 pub const DEFAULT_AUTO_BACKUP_KEEP: i64 = 14;
 /// 全局快速记录快捷键（v0.3 起 = capture）。
@@ -193,6 +195,10 @@ pub const DEFAULT_DAILY_DIGEST_TIME: &str = "09:30";
 
 fn default_theme() -> String {
     DEFAULT_THEME.to_string()
+}
+
+fn default_sidebar_theme() -> String {
+    DEFAULT_SIDEBAR_THEME.to_string()
 }
 
 fn default_auto_backup() -> bool {
@@ -233,6 +239,9 @@ fn default_daily_digest_time() -> String {
 pub struct Settings {
     #[serde(default = "default_theme")]
     pub theme: String,
+    /// v0.11 侧边栏配色方案
+    #[serde(default = "default_sidebar_theme")]
+    pub sidebar_theme: String,
     #[serde(default = "default_auto_backup")]
     pub auto_backup: bool,
     #[serde(default = "default_auto_backup_keep")]

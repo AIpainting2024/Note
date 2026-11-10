@@ -65,7 +65,7 @@ export function SidebarProject({ project, active, expanded, onToggle, onOpenProj
       <div
         className={cn(
           "group flex h-8 items-center rounded-md pr-1 transition-colors",
-          active ? "bg-accent-soft text-accent" : "text-ink-muted hover:bg-panel hover:text-ink",
+          active ? "bg-accent-soft text-accent" : "text-sidebar-ink-muted hover:bg-sidebar-hover hover:text-sidebar-ink",
         )}
       >
         <button
@@ -73,7 +73,7 @@ export function SidebarProject({ project, active, expanded, onToggle, onOpenProj
           aria-label={expanded ? "收起项目任务" : "展开项目任务"}
           title={expanded ? "收起" : "展开"}
           onClick={onToggle}
-          className="ml-0.5 shrink-0 rounded p-1 text-ink-faint hover:text-ink"
+          className="ml-0.5 shrink-0 rounded p-1 text-sidebar-ink-faint hover:text-sidebar-ink"
         >
           {expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
         </button>
@@ -96,20 +96,20 @@ export function SidebarProject({ project, active, expanded, onToggle, onOpenProj
           {project.taskOverdue > 0 && (
             <span className="shrink-0 text-[10.5px] text-danger">{project.taskOverdue}</span>
           )}
-          <span className="shrink-0 text-[10.5px] text-ink-faint">
+          <span className="shrink-0 text-[10.5px] text-sidebar-ink-faint">
             {project.taskTotal > 0 ? `${project.taskDone}/${project.taskTotal}` : ""}
           </span>
         </button>
       </div>
 
       {expanded && (
-        <div className="ml-[13px] border-l border-line pl-1.5 pb-1">
+        <div className="ml-[13px] border-l border-sidebar-line pl-1.5 pb-1">
           {loading && tasks.length === 0 && (
-            <p className="px-1.5 py-1 text-[10.5px] text-ink-faint">加载中…</p>
+            <p className="px-1.5 py-1 text-[10.5px] text-sidebar-ink-faint">加载中…</p>
           )}
           {error && <p className="px-1.5 py-1 text-[10.5px] text-danger">{error}</p>}
           {!loading && tasks.length === 0 && !error && (
-            <p className="px-1.5 py-1 text-[10.5px] text-ink-faint">还没有任务</p>
+            <p className="px-1.5 py-1 text-[10.5px] text-sidebar-ink-faint">还没有任务</p>
           )}
 
           {tasks.slice(0, LIMIT).map((task) => {
@@ -119,7 +119,7 @@ export function SidebarProject({ project, active, expanded, onToggle, onOpenProj
             return (
               <div
                 key={task.id}
-                className="group flex items-start gap-1.5 rounded px-1 py-1 hover:bg-panel"
+                className="group flex items-start gap-1.5 rounded px-1 py-1 hover:bg-sidebar-hover"
               >
                 <div className="mt-[3px]">
                   <Checkbox
@@ -146,13 +146,13 @@ export function SidebarProject({ project, active, expanded, onToggle, onOpenProj
                   <span
                     className={cn(
                       "block truncate text-[11.5px] leading-snug",
-                      done ? "text-ink-faint line-through" : "text-ink",
+                      done ? "text-sidebar-ink-faint line-through" : "text-sidebar-ink",
                     )}
                   >
                     {task.content}
                   </span>
                   {(due || childTotal > 0) && (
-                    <span className="mt-0.5 flex items-center gap-1.5 text-[10px] text-ink-faint">
+                    <span className="mt-0.5 flex items-center gap-1.5 text-[10px] text-sidebar-ink-faint">
                       {due && (
                         <span
                           className={cn(
@@ -177,7 +177,7 @@ export function SidebarProject({ project, active, expanded, onToggle, onOpenProj
           })}
 
           {tasks.length > LIMIT && (
-            <p className="px-1.5 py-1 text-[10.5px] text-ink-faint">
+            <p className="px-1.5 py-1 text-[10.5px] text-sidebar-ink-faint">
               还有 {tasks.length - LIMIT} 项，进入项目页查看
             </p>
           )}

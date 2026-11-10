@@ -13,13 +13,17 @@ use tauri::State;
 use crate::db::models::{
     Settings, DEFAULT_AUTO_BACKUP_KEEP, DEFAULT_DAILY_DIGEST_ENABLED, DEFAULT_DAILY_DIGEST_TIME,
     DEFAULT_GLOBAL_SHORTCUT, DEFAULT_MAIN_SHORTCUT, DEFAULT_REMIND_BEFORE_MINUTES,
-    DEFAULT_SEARCH_SHORTCUT, DEFAULT_THEME,
+    DEFAULT_SEARCH_SHORTCUT, DEFAULT_SIDEBAR_THEME, DEFAULT_THEME,
 };
 use crate::db::{load_settings_map, parse_time, parse_timestamp, set_setting, tomorrow_midnight};
 use crate::AppState;
 
 /// 允许的主题值。
 pub const THEMES: [&str; 3] = ["light", "dark", "system"];
+/// 允许的侧边栏配色（v0.11）。
+pub const SIDEBAR_THEMES: [&str; 7] = [
+    "default", "bamboo", "paper", "moon", "indigo", "lotus", "tea",
+];
 /// 自动备份保留份数的上限，防止用户误填天文数字。
 pub const MAX_BACKUP_KEEP: i64 = 365;
 /// `remindBeforeMinutes` 的合法取值；0 = 关闭截止前提醒。
@@ -41,6 +45,11 @@ pub async fn load_settings(pool: &SqlitePool, data_dir: &Path) -> Result<Setting
         .map(|v| v.trim().to_string())
         .filter(|v| THEMES.contains(&v.as_str()))
         .unwrap_or_else(|| DEFAULT_THEME.to_string());
+    let sidebar_theme = map
+        .get("sidebar_theme")
+        .map(|v| v.trim().to_string())
+        .filter(|v| SIDEBAR_THEMES.contains(&v.as_str()))
+        .unwrap_or_else(|| DEFAULT_SIDEBAR_THEME.to_string());
     let auto_backup = map_bool(&map, "auto_backup", crate::db::models::DEFAULT_AUTO_BACKUP);
     let auto_backup_keep = map
         .get("auto_backup_keep")
@@ -77,6 +86,7 @@ pub async fn load_settings(pool: &SqlitePool, data_dir: &Path) -> Result<Setting
 
     Ok(Settings {
         theme,
+        sidebar_theme,
         auto_backup,
         auto_backup_keep,
         global_shortcut,
@@ -100,6 +110,13 @@ pub async fn save_settings_core(
     let theme = settings.theme.trim().to_string();
     if !THEMES.contains(&theme.as_str()) {
         return Err(format!("主题值无效：{theme}（可选 light / dark / system）"));
+    }
+    let sidebar_theme = settings.sidebar_theme.trim().to_string();
+    if !SIDEBAR_THEMES.contains(&sidebar_theme.as_str()) {
+        return Err(format!(
+            "侧边栏配色无效：{sidebar_theme}（可选 {}）",
+            SIDEBAR_THEMES.join(" / ")
+        ));
     }
     let auto_backup_keep = settings.auto_backup_keep.clamp(1, MAX_BACKUP_KEEP);
     let global_shortcut = settings.global_shortcut.trim().to_string();
@@ -136,8 +153,9 @@ pub async fn save_settings_core(
         return Err(format!("静音截止时间格式无效：{value}"));
     }
 
-    let pairs: [(&str, String); 9] = [
+    let pairs: [(&str, String); 10] = [
         ("theme", theme),
+        ("sidebar_theme", sidebar_theme),
         ("auto_backup", if settings.auto_backup { "true" } else { "false" }.to_string()),
         ("auto_backup_keep", auto_backup_keep.to_string()),
         ("global_shortcut", global_shortcut),
@@ -232,6 +250,7 @@ mod tests {
     fn settings_fixture() -> Settings {
         Settings {
             theme: "dark".into(),
+            sidebar_theme: "bamboo".into(),
             auto_backup: false,
             auto_backup_keep: 30,
             global_shortcut: "CommandOrControl+Alt+W".into(),

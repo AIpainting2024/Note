@@ -12,6 +12,13 @@
   --color-ink-faint: var(--c-ink-faint);
   --color-accent: var(--c-accent);
   --color-accent-soft: var(--c-accent-soft);
+  /* v0.11 侧边栏配色（由 lib/sidebarThemes.ts 运行时覆盖） */
+  --color-sidebar: var(--c-sidebar);
+  --color-sidebar-line: var(--c-sidebar-line);
+  --color-sidebar-ink: var(--c-sidebar-ink);
+  --color-sidebar-ink-muted: var(--c-sidebar-ink-muted);
+  --color-sidebar-ink-faint: var(--c-sidebar-ink-faint);
+  --color-sidebar-hover: var(--c-sidebar-hover);
   --color-danger: var(--c-danger);
   --color-warn: var(--c-warn);
   --font-sans: "Segoe UI", "Microsoft YaHei UI", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
@@ -29,6 +36,12 @@
   --c-accent-soft: #eef0ff;
   --c-danger: #e5484d;
   --c-warn: #a86500;
+  --c-sidebar: #fbfbfc;
+  --c-sidebar-line: #e6e6ea;
+  --c-sidebar-ink: #1b1b1f;
+  --c-sidebar-ink-muted: #6b6b75;
+  --c-sidebar-ink-faint: #9a9aa4;
+  --c-sidebar-hover: #ffffff;
   color-scheme: light;
 }
 
@@ -44,6 +57,12 @@
   --c-accent-soft: #262a45;
   --c-danger: #ff6369;
   --c-warn: #e0a13a;
+  --c-sidebar: #222228;
+  --c-sidebar-line: #2c2c34;
+  --c-sidebar-ink: #e9e9ee;
+  --c-sidebar-ink-muted: #9a9aa6;
+  --c-sidebar-ink-faint: #6f6f7a;
+  --c-sidebar-hover: #2a2a31;
   color-scheme: dark;
 }
 

@@ -85,6 +85,8 @@ export type ProjectPatch = {
 
 export type Settings = {
   theme: Theme;
+  /** v0.11 侧边栏配色：default / bamboo / paper / moon / indigo / lotus / tea */
+  sidebarTheme: string;
   autoBackup: boolean;
   autoBackupKeep: number;
   globalShortcut: string;

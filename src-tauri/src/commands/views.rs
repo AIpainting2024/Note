@@ -43,7 +43,8 @@ pub async fn list_inbox_entries(
     let pool = state.pool.read().await;
     let limit = limit.unwrap_or(200).clamp(1, 500);
     let sql = select_sql(
-        "WHERE is_deleted = 0 AND parent_id IS NULL AND project_id IS NULL \
+        // v0.11：收件箱改成「便签贴」，只收记录（is_todo = 0），待办不进来
+        "WHERE is_deleted = 0 AND parent_id IS NULL AND project_id IS NULL AND is_todo = 0 \
          ORDER BY day DESC, created_at DESC, id DESC LIMIT ?1",
     );
     let mut entries = sqlx::query_as::<_, Entry>(&sql)

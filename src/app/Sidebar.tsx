@@ -4,7 +4,7 @@ import {
   ChevronsUpDown,
   FolderKanban,
   Grid2x2,
-  Inbox,
+  StickyNote,
   ListChecks,
   Lock,
   LockOpen,
@@ -30,7 +30,7 @@ const NAV: { view: View; label: string; icon: typeof Sun }[] = [
   { view: "today", label: "今日", icon: Sun },
   { view: "calendar", label: "日历", icon: CalendarDays },
   { view: "todos", label: "待办", icon: ListChecks },
-  { view: "inbox", label: "收件箱", icon: Inbox },
+  { view: "inbox", label: "便签贴", icon: StickyNote },
   { view: "quadrant", label: "四象限", icon: Grid2x2 },
   { view: "pomodoro", label: "番茄钟", icon: Timer },
 ];
@@ -114,15 +114,13 @@ export function Sidebar() {
   };
 
   return (
-    <nav className="flex w-[196px] shrink-0 select-none flex-col border-r border-line bg-panel-2">
+    <nav className="flex w-[196px] shrink-0 select-none flex-col border-r border-sidebar-line bg-sidebar">
       <div className="px-4 pb-3 pt-4">
         <div className="flex items-center gap-2">
-          <div className="flex h-6 w-6 items-center justify-center rounded-md bg-accent text-[12px] font-bold text-white">
-            青
-          </div>
+          <img src="/logo.png" alt="青苍笔记" className="h-7 w-7 rounded-md" draggable={false} />
           <div className="leading-tight">
-            <p className="text-[13px] font-semibold text-ink">青苍笔记</p>
-            <p className="text-[10.5px] text-ink-faint">日常记录</p>
+            <p className="text-[13px] font-semibold text-sidebar-ink">青苍笔记</p>
+            <p className="text-[10.5px] text-sidebar-ink-faint">日常记录</p>
           </div>
         </div>
       </div>
@@ -130,7 +128,7 @@ export function Sidebar() {
       <button
         type="button"
         onClick={() => setSearchOpen(true)}
-        className="mx-2.5 mb-2 flex h-8 items-center gap-2 rounded-md border border-line bg-panel px-2.5 text-[12.5px] text-ink-faint hover:border-ink-faint/50 hover:text-ink"
+        className="mx-2.5 mb-2 flex h-8 items-center gap-2 rounded-md border border-sidebar-line bg-sidebar-hover/60 px-2.5 text-[12.5px] text-sidebar-ink-muted hover:border-sidebar-ink-faint/50 hover:text-sidebar-ink"
       >
         <Search size={13} />
         <span className="flex-1 text-left">搜索</span>
@@ -147,7 +145,7 @@ export function Sidebar() {
               "flex h-8 items-center gap-2 rounded-md px-2.5 text-[13px] transition-colors",
               view === item
                 ? "bg-accent-soft font-medium text-accent"
-                : "text-ink-muted hover:bg-panel hover:text-ink",
+                : "text-sidebar-ink-muted hover:bg-sidebar-hover hover:text-sidebar-ink",
             )}
           >
             <Icon size={15} />
@@ -157,7 +155,7 @@ export function Sidebar() {
       </div>
 
       <div className="mt-3 flex items-center gap-1 pl-3 pr-2 pb-1">
-        <span className="flex flex-1 items-center gap-1 text-[11px] font-medium tracking-wide text-ink-faint">
+        <span className="flex flex-1 items-center gap-1 text-[11px] font-medium tracking-wide text-sidebar-ink-faint">
           <FolderKanban size={11} /> 项目
         </span>
         {visibleForToggle.length > 0 && (
@@ -166,7 +164,7 @@ export function Sidebar() {
             aria-label={allExpanded ? "全部收起" : "全部展开"}
             title={allExpanded ? "全部收起" : "全部展开"}
             onClick={toggleAll}
-            className="rounded p-0.5 text-ink-faint hover:bg-panel hover:text-ink"
+            className="rounded p-0.5 text-sidebar-ink-faint hover:bg-sidebar-hover hover:text-sidebar-ink"
           >
             {allExpanded ? <ChevronsDownUp size={12} /> : <ChevronsUpDown size={12} />}
           </button>
@@ -176,7 +174,7 @@ export function Sidebar() {
           aria-label="新建项目"
           title="新建项目"
           onClick={() => setCreating(true)}
-          className="rounded p-0.5 text-ink-faint hover:bg-panel hover:text-accent"
+          className="rounded p-0.5 text-sidebar-ink-faint hover:bg-sidebar-hover hover:text-accent"
         >
           <Plus size={13} />
         </button>
@@ -184,7 +182,7 @@ export function Sidebar() {
 
       <div className="min-h-0 flex-1 overflow-y-auto px-2.5 pb-2">
         {publicProjects.length === 0 ? (
-          <p className="px-2 py-1 text-[11px] leading-relaxed text-ink-faint">还没有项目</p>
+          <p className="px-2 py-1 text-[11px] leading-relaxed text-sidebar-ink-faint">还没有项目</p>
         ) : (
           publicProjects.map((project) => (
             <SidebarProject
@@ -202,7 +200,7 @@ export function Sidebar() {
 
         {/* 保密项目区 */}
         <div className="mt-3 flex items-center gap-1 pl-0.5 pr-1 pb-1">
-          <span className="flex flex-1 items-center gap-1 text-[11px] font-medium tracking-wide text-ink-faint">
+          <span className="flex flex-1 items-center gap-1 text-[11px] font-medium tracking-wide text-sidebar-ink-faint">
             {secretVisible ? <LockOpen size={11} /> : <Lock size={11} />} 保密项目
           </span>
           {secretVisible && (
@@ -211,7 +209,7 @@ export function Sidebar() {
               title="重新上锁"
               aria-label="重新上锁"
               onClick={() => void lockSecret()}
-              className="rounded p-0.5 text-ink-faint hover:bg-panel hover:text-ink"
+              className="rounded p-0.5 text-sidebar-ink-faint hover:bg-sidebar-hover hover:text-sidebar-ink"
             >
               <Lock size={12} />
             </button>
@@ -222,13 +220,13 @@ export function Sidebar() {
           <button
             type="button"
             onClick={() => setSecretOpen(true)}
-            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12px] text-ink-faint hover:bg-panel hover:text-ink"
+            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12px] text-sidebar-ink-muted hover:bg-sidebar-hover hover:text-sidebar-ink"
           >
             <Lock size={12} />
             {secretStatus.configured ? "已锁定 · 点此输入密码" : "设置密码并启用"}
           </button>
         ) : secretProjects.length === 0 ? (
-          <p className="px-2 py-1 text-[11px] text-ink-faint">
+          <p className="px-2 py-1 text-[11px] text-sidebar-ink-faint">
             还没有保密项目（新建项目时勾选「保密」）
           </p>
         ) : (
@@ -259,13 +257,13 @@ export function Sidebar() {
             "flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-[13px] transition-colors",
             view === "settings"
               ? "bg-accent-soft font-medium text-accent"
-              : "text-ink-muted hover:bg-panel hover:text-ink",
+              : "text-sidebar-ink-muted hover:bg-sidebar-hover hover:text-sidebar-ink",
           )}
         >
           <Settings size={15} />
           设置
         </button>
-        <p className="mt-2 px-2.5 text-[10.5px] leading-relaxed text-ink-faint">
+        <p className="mt-2 px-2.5 text-[10.5px] leading-relaxed text-sidebar-ink-faint">
           {captureHint} 随时记一笔
         </p>
       </div>

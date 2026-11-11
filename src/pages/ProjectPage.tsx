@@ -1,4 +1,4 @@
-import { CheckCircle2, Pencil, Plus, Trash2 } from "lucide-react";
+import { CheckCircle2, ChevronDown, ChevronRight, Pencil, Plus, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { EntryCard } from "../components/EntryCard";
 import { PageHeader } from "../components/PageHeader";
@@ -79,6 +79,13 @@ export function ProjectPage() {
       alive = false;
     };
   }, [projectId, tab, revision]);
+
+  // v0.14：已完成任务默认折叠
+  const doneKey = `page:${projectId ?? 0}`;
+  const doneOpen = useUI((s) => Boolean(s.doneExpanded[doneKey]));
+  const setDoneExpanded = useUI((s) => s.setDoneExpanded);
+  const pendingItems = items.filter((entry) => !entry.completedAt);
+  const doneItems = items.filter((entry) => entry.completedAt);
 
   const addTask = async () => {
     const content = draft.trim();
@@ -204,11 +211,43 @@ export function ProjectPage() {
             {tab === "tasks" ? "这个项目还没有任务" : "这个项目还没有记录"}
           </p>
         ) : (
-          <div className="flex flex-col gap-1.5">
-            {items.map((entry) => (
-              <EntryCard key={entry.id} entry={entry} onChange={reload} />
-            ))}
-          </div>
+          <>
+            <div className="flex flex-col gap-1.5">
+              {pendingItems.map((entry) => (
+                <EntryCard key={entry.id} entry={entry} onChange={reload} />
+              ))}
+            </div>
+
+            {pendingItems.length === 0 && doneItems.length > 0 && (
+              <p className="rounded-lg border border-dashed border-line px-4 py-6 text-center text-[12.5px] text-accent">
+                这个项目的任务都完成了
+              </p>
+            )}
+
+            {doneItems.length > 0 && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setDoneExpanded(doneKey, !doneOpen)}
+                  aria-expanded={doneOpen}
+                  className="mt-2 flex w-full items-center gap-1.5 rounded-lg border border-line bg-panel px-2.5 py-1.5 text-[12.5px] text-ink-muted transition-colors hover:text-ink"
+                >
+                  {doneOpen ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+                  已完成 {doneItems.length}
+                  <span className="ml-auto text-[11px] text-ink-faint">
+                    {doneOpen ? "点击收起" : "点击展开"}
+                  </span>
+                </button>
+                {doneOpen && (
+                  <div className="mt-1.5 flex flex-col gap-1.5">
+                    {doneItems.map((entry) => (
+                      <EntryCard key={entry.id} entry={entry} onChange={reload} />
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </>
         )}
       </div>
 

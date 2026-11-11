@@ -17,12 +17,27 @@ type Props = {
   expanded: boolean;
   onToggle: () => void;
   onOpenProject: () => void;
+  /** v0.14：长按拖动排序的事件（仅项目未展开时挂载） */
+  sortProps?: Record<string, unknown>;
+  /** v0.14：是否正在被拖动 */
+  dragging?: boolean;
 };
 
 /** 侧边栏里的一个项目：可展开看它下面的任务，任务可就地勾选完成 / 点开详情 */
-export function SidebarProject({ project, active, expanded, onToggle, onOpenProject }: Props) {
+export function SidebarProject({
+  project,
+  active,
+  expanded,
+  onToggle,
+  onOpenProject,
+  sortProps,
+  dragging = false,
+}: Props) {
   const revision = useUI((s) => s.revision);
   const setSelectedEntry = useUI((s) => s.setSelectedEntry);
+  const doneKey = `side:${project.id}`;
+  const doneOpen = useUI((s) => Boolean(s.doneExpanded[doneKey]));
+  const setDoneExpanded = useUI((s) => s.setDoneExpanded);
   const [tasks, setTasks] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -58,18 +73,81 @@ export function SidebarProject({ project, active, expanded, onToggle, onOpenProj
     }
   };
 
-  const pending = tasks.filter((t) => !t.completedAt).length;
+  const pending = tasks.filter((t) => !t.completedAt);
+  const done = tasks.filter((t) => t.completedAt);
+
+  const renderTask = (task: Entry) => {
+    const isDone = Boolean(task.completedAt);
+    const due = task.dueDate ? dueLabel(task.dueDate, task.dueTime) : null;
+    const childTotal = task.childTotal ?? 0;
+    return (
+      <div key={task.id} className="group flex items-start gap-1.5 rounded px-1 py-1 hover:bg-sidebar-hover">
+        <div className="mt-[3px]">
+          <Checkbox
+            checked={isDone}
+            size="sm"
+            ariaLabel={isDone ? "标记为未完成" : "标记为完成"}
+            onCheckedChange={(v) => void complete(task, v)}
+          />
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            const targetProject = task.projectId ?? project.id ?? null;
+            setSelectedEntry(task);
+            useUI.getState().setAddProjectId(targetProject);
+            useUI.getState().setSelectedProject(targetProject);
+            useUI.getState().setView(targetProject == null ? "inbox" : "project");
+          }}
+          className="min-w-0 flex-1 text-left"
+          title={task.content}
+        >
+          <span
+            className={cn(
+              "block truncate text-[11.5px] leading-snug",
+              isDone ? "text-sidebar-ink-faint line-through" : "text-sidebar-ink",
+            )}
+          >
+            {task.content}
+          </span>
+          {(due || childTotal > 0) && (
+            <span className="mt-0.5 flex items-center gap-1.5 text-[10px] text-sidebar-ink-faint">
+              {due && (
+                <span
+                  className={cn(
+                    "flex items-center gap-0.5",
+                    isOverdueRed(task, due.tone) && "text-danger",
+                    due.tone === "today" && "text-warn",
+                  )}
+                >
+                  <Clock size={9} /> {due.text}
+                </span>
+              )}
+              {childTotal > 0 && (
+                <span className="flex items-center gap-0.5">
+                  <ListChecks size={9} /> {task.childDone ?? 0}/{childTotal}
+                </span>
+              )}
+            </span>
+          )}
+        </button>
+      </div>
+    );
+  };
 
   return (
     <div>
       <div
+        {...(expanded ? {} : sortProps)}
         className={cn(
           "group flex h-8 items-center rounded-md pr-1 transition-colors",
+          dragging && "opacity-50",
           active ? "bg-accent-soft text-accent" : "text-sidebar-ink-muted hover:bg-sidebar-hover hover:text-sidebar-ink",
         )}
       >
         <button
           type="button"
+          data-no-sort
           aria-label={expanded ? "收起项目任务" : "展开项目任务"}
           title={expanded ? "收起" : "展开"}
           onClick={onToggle}
@@ -85,12 +163,7 @@ export function SidebarProject({ project, active, expanded, onToggle, onOpenProj
           title={`${project.name} · 任务 ${project.taskDone}/${project.taskTotal}`}
         >
           <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: projectHex(project.color) }} />
-          <span
-            className={cn(
-              "min-w-0 flex-1 truncate text-[12.5px]",
-              active && "font-medium",
-            )}
-          >
+          <span className={cn("min-w-0 flex-1 truncate text-[12.5px]", active && "font-medium")}>
             {project.name}
           </span>
           {project.taskOverdue > 0 && (
@@ -112,78 +185,32 @@ export function SidebarProject({ project, active, expanded, onToggle, onOpenProj
             <p className="px-1.5 py-1 text-[10.5px] text-sidebar-ink-faint">还没有任务</p>
           )}
 
-          {tasks.slice(0, LIMIT).map((task) => {
-            const done = Boolean(task.completedAt);
-            const due = task.dueDate ? dueLabel(task.dueDate, task.dueTime) : null;
-            const childTotal = task.childTotal ?? 0;
-            return (
-              <div
-                key={task.id}
-                className="group flex items-start gap-1.5 rounded px-1 py-1 hover:bg-sidebar-hover"
+          {pending.slice(0, LIMIT).map(renderTask)}
+
+          {pending.length === 0 && done.length > 0 && !error && (
+            <p className="px-1.5 py-1 text-[10.5px] text-accent">全部完成</p>
+          )}
+
+          {/* v0.14：已完成任务默认折叠 */}
+          {done.length > 0 && (
+            <>
+              <button
+                type="button"
+                onClick={() => setDoneExpanded(doneKey, !doneOpen)}
+                aria-expanded={doneOpen}
+                className="mt-0.5 flex w-full items-center gap-1 rounded px-1.5 py-1 text-[10.5px] text-sidebar-ink-faint hover:bg-sidebar-hover hover:text-sidebar-ink"
               >
-                <div className="mt-[3px]">
-                  <Checkbox
-                    checked={done}
-                    size="sm"
-                    ariaLabel={done ? "标记为未完成" : "标记为完成"}
-                    onCheckedChange={(v) => void complete(task, v)}
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    // 右侧详情 + 中间内容区一起联动（v0.7 需求 3/4）：
-                    // 有项目就切到该项目的项目页，没有项目就切到收件箱。
-                    const targetProject = task.projectId ?? project.id ?? null;
-                    setSelectedEntry(task);
-                    useUI.getState().setAddProjectId(targetProject);
-                    useUI.getState().setSelectedProject(targetProject);
-                    useUI.getState().setView(targetProject == null ? "inbox" : "project");
-                  }}
-                  className="min-w-0 flex-1 text-left"
-                  title={task.content}
-                >
-                  <span
-                    className={cn(
-                      "block truncate text-[11.5px] leading-snug",
-                      done ? "text-sidebar-ink-faint line-through" : "text-sidebar-ink",
-                    )}
-                  >
-                    {task.content}
-                  </span>
-                  {(due || childTotal > 0) && (
-                    <span className="mt-0.5 flex items-center gap-1.5 text-[10px] text-sidebar-ink-faint">
-                      {due && (
-                        <span
-                          className={cn(
-                            "flex items-center gap-0.5",
-                            isOverdueRed(task, due.tone) && "text-danger",
-                            due.tone === "today" && "text-warn",
-                          )}
-                        >
-                          <Clock size={9} /> {due.text}
-                        </span>
-                      )}
-                      {childTotal > 0 && (
-                        <span className="flex items-center gap-0.5">
-                          <ListChecks size={9} /> {task.childDone ?? 0}/{childTotal}
-                        </span>
-                      )}
-                    </span>
-                  )}
-                </button>
-              </div>
-            );
-          })}
+                {doneOpen ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
+                已完成 {done.length}
+              </button>
+              {doneOpen && done.slice(0, LIMIT).map(renderTask)}
+            </>
+          )}
 
           {tasks.length > LIMIT && (
             <p className="px-1.5 py-1 text-[10.5px] text-sidebar-ink-faint">
               还有 {tasks.length - LIMIT} 项，进入项目页查看
             </p>
-          )}
-
-          {tasks.length > 0 && pending === 0 && (
-            <p className="px-1.5 py-1 text-[10.5px] text-accent">全部完成</p>
           )}
         </div>
       )}

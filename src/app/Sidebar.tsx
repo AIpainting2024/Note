@@ -18,7 +18,9 @@ import { useEffect, useState } from "react";
 import { NotificationBell } from "../components/NotificationBell";
 import { ProjectDialog } from "../components/ProjectDialog";
 import { SidebarProject } from "../components/SidebarProject";
+import { api, errorText } from "../lib/api";
 import { cn } from "../lib/cn";
+import { useLongPressSort } from "../lib/longPressSort";
 import { dragRegionProps } from "../lib/windowChrome";
 import { displayShortcut } from "../lib/shortcuts";
 import type { View } from "../lib/types";
@@ -84,6 +86,31 @@ export function Sidebar() {
   const active = projects.filter((p) => p.status !== "archived");
   const publicProjects = active.filter((p) => !p.isSecret);
   const secretProjects = active.filter((p) => p.isSecret);
+
+  // v0.14：长按拖动排序（普通项目区 / 保密项目区各自独立）
+  const loadProjects = useProjects((s) => s.load);
+  const [sortError, setSortError] = useState<string | null>(null);
+
+  const persistOrder = async (list: number[]) => {
+    try {
+      for (let index = 0; index < list.length; index += 1) {
+        await api.updateProject(list[index], { sortOrder: index });
+      }
+      await loadProjects();
+      setSortError(null);
+    } catch (err) {
+      setSortError(errorText(err));
+    }
+  };
+
+  const publicSort = useLongPressSort(
+    publicProjects.map((p) => p.id),
+    (list) => void persistOrder(list),
+  );
+  const secretSort = useLongPressSort(
+    secretProjects.map((p) => p.id),
+    (list) => void persistOrder(list),
+  );
   const secretVisible = secretStatus.configured && secretStatus.unlocked;
 
   const visibleForToggle = secretVisible ? active : publicProjects;
@@ -192,18 +219,32 @@ export function Sidebar() {
         {publicProjects.length === 0 ? (
           <p className="px-2 py-1 text-[11px] leading-relaxed text-sidebar-ink-faint">还没有项目</p>
         ) : (
-          publicProjects.map((project) => (
-            <SidebarProject
-              key={project.id}
-              project={project}
-              active={view === "project" && selectedProjectId === project.id}
-              expanded={Boolean(expanded[project.id])}
-              onToggle={() =>
-                setExpanded((prev) => ({ ...prev, [project.id]: !prev[project.id] }))
-              }
-              onOpenProject={() => openProject(project.id)}
-            />
-          ))
+          <div ref={publicSort.containerRef}>
+            {publicProjects.map((project, index) => (
+              <div key={project.id}>
+                {publicSort.showIndicatorBefore(index) && (
+                  <div className="mx-1 h-0.5 rounded-full bg-accent" />
+                )}
+                <SidebarProject
+                  project={project}
+                  active={view === "project" && selectedProjectId === project.id}
+                  expanded={Boolean(expanded[project.id])}
+                  onToggle={() =>
+                    setExpanded((prev) => ({ ...prev, [project.id]: !prev[project.id] }))
+                  }
+                  onOpenProject={() => openProject(project.id)}
+                  sortProps={publicSort.rowProps(project.id)}
+                  dragging={publicSort.draggingId === project.id}
+                />
+              </div>
+            ))}
+            {publicSort.showIndicatorBefore(publicProjects.length) && (
+              <div className="mx-1 h-0.5 rounded-full bg-accent" />
+            )}
+          </div>
+        )}
+        {sortError && (
+          <p className="px-2 py-1 text-[10.5px] text-danger">{sortError}</p>
         )}
 
         {/* 保密项目区 */}
@@ -238,18 +279,29 @@ export function Sidebar() {
             还没有保密项目（新建项目时勾选「保密」）
           </p>
         ) : (
-          secretProjects.map((project) => (
-            <SidebarProject
-              key={project.id}
-              project={project}
-              active={view === "project" && selectedProjectId === project.id}
-              expanded={Boolean(expanded[project.id])}
-              onToggle={() =>
-                setExpanded((prev) => ({ ...prev, [project.id]: !prev[project.id] }))
-              }
-              onOpenProject={() => openProject(project.id)}
-            />
-          ))
+          <div ref={secretSort.containerRef}>
+            {secretProjects.map((project, index) => (
+              <div key={project.id}>
+                {secretSort.showIndicatorBefore(index) && (
+                  <div className="mx-1 h-0.5 rounded-full bg-accent" />
+                )}
+                <SidebarProject
+                  project={project}
+                  active={view === "project" && selectedProjectId === project.id}
+                  expanded={Boolean(expanded[project.id])}
+                  onToggle={() =>
+                    setExpanded((prev) => ({ ...prev, [project.id]: !prev[project.id] }))
+                  }
+                  onOpenProject={() => openProject(project.id)}
+                  sortProps={secretSort.rowProps(project.id)}
+                  dragging={secretSort.draggingId === project.id}
+                />
+              </div>
+            ))}
+            {secretSort.showIndicatorBefore(secretProjects.length) && (
+              <div className="mx-1 h-0.5 rounded-full bg-accent" />
+            )}
+          </div>
         )}
       </div>
 

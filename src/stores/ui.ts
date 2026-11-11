@@ -43,6 +43,9 @@ type UIState = {
   /** v0.12：番茄钟结束未查看的红点提示 */
   pomodoroDone: boolean;
   setPomodoroDone: (done: boolean) => void;
+  /** v0.14：已完成任务折叠区是否展开（key 形如 page:12 / side:12，本次会话内记住） */
+  doneExpanded: Record<string, boolean>;
+  setDoneExpanded: (key: string, open: boolean) => void;
 
   /** 数据变更计数器：任何写入后自增，页面据此重新拉取 */
   revision: number;
@@ -92,6 +95,10 @@ export const useUI = create<UIState>((set) => ({
 
   pomodoroDone: false,
   setPomodoroDone: (pomodoroDone) => set({ pomodoroDone }),
+
+  doneExpanded: {},
+  setDoneExpanded: (key, open) =>
+    set((s) => ({ doneExpanded: { ...s.doneExpanded, [key]: open } })),
 
   revision: 0,
   bumpRevision: () => set((s) => ({ revision: s.revision + 1 })),
